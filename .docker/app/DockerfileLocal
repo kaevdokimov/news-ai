@@ -1,0 +1,49 @@
+FROM cr.yandex/crpoc9esj8m86e03jc1m/env/php:8-4-fpm
+
+LABEL maintainer="aleksey@kolyadin.ru"
+LABEL maintainer="Kirill.Evdokimov@easycomm.ru"
+
+# Переменные
+ARG UID=1000
+ARG GID=1001
+ENV TZ=Europe/Moscow APP_DIR=/var/www/app PHP_CONF_DIR=/usr/local/etc/php/conf.d
+
+# Только для local образа
+COPY ./id_rsa.pub /root/.ssh/id_rsa.pub
+COPY ./id_rsa /root/.ssh/id_rsa
+RUN chmod 600 /root/.ssh/id_rsa.pub
+RUN chmod 600 /root/.ssh/id_rsa
+
+# Создание директорий и файлов конфигурации
+RUN mkdir -p $PHP_CONF_DIR && touch $PHP_CONF_DIR/custom.ini
+
+# Копирование файлов
+COPY --chown=www-data:www-data ./ $APP_DIR
+COPY ./.docker/app/php/fpm/php-fpm.conf /usr/local/etc/php-fpm.d/99-symfony.conf
+COPY ./.docker/app/php/fpm/php.ini /usr/local/etc/php/php.ini
+
+### Установка расширения Xdebug
+RUN docker-php-ext-enable xdebug \
+    && echo "xdebug.mode=develop,debug,coverage" >> $PHP_CONF_DIR/docker-php-ext-xdebug.ini \
+    && echo "xdebug.start_with_request = yes" >> $PHP_CONF_DIR/docker-php-ext-xdebug.ini \
+    && echo "xdebug.client_host=host.docker.internal" >> $PHP_CONF_DIR/docker-php-ext-xdebug.ini \
+    && echo "xdebug.log=/var/log/xdebug.log" >> $PHP_CONF_DIR/docker-php-ext-xdebug.ini \
+    && echo "xdebug.log_level=0" >> $PHP_CONF_DIR/docker-php-ext-xdebug.ini \
+    && echo "xdebug.idekey = PHPSTORM" >> $PHP_CONF_DIR/docker-php-ext-xdebug.ini
+
+# Установка временной зоны и других настроек в одном слое
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
+    echo $TZ > /etc/timezone && \
+    echo "date.timezone=$TZ" >> $PHP_CONF_DIR/extra.ini && \
+    rm -rf $APP_DIR/var/cache/* /var/www/app/var/log/* && \
+    chmod +x /var/www/app/.docker/app/cmd.sh
+
+# Установка рабочей директории
+WORKDIR $APP_DIR
+
+# Изменение UID и GID пользователя www-data
+RUN usermod --uid ${UID} www-data && groupmod --gid $GID www-data
+
+# Установка пользователя и команды по умолчанию
+USER www-data
+CMD ["/var/www/app/.docker/app/cmd.sh"]
