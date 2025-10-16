@@ -1,0 +1,20 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build the local Docker image
+      run: docker build . --file ./docker/app/DockerfileLocal --tag app-local:$(date +%s)
+    - name: Build the Docker image
+      run: docker build . --file ./docker/app/Dockerfile --tag app:$(date +%s)
