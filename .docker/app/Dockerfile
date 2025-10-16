@@ -1,82 +1,69 @@
-FROM php:8.4-fpm-alpine3.22
+# Base image arguments
+ARG PHP_VERSION=8.4
+ARG ALPINE_VERSION=3.22
 
-# Установка системных зависимостей и расширений PHP
-RUN apk update && apk upgrade && apk add --no-cache \
-    git unzip wget sudo openssh-client bash \
-    icu-dev libxml2-dev gmp-dev libpng-dev libzip-dev postgresql-dev rabbitmq-c-dev libssh-dev \
-    gettext-dev linux-headers \
-    && docker-php-ext-install -j$(nproc) \
-        bcmath \
-        gettext \
-        gd \
-        gmp \
-        intl \
-        opcache \
-        pcntl \
-        pdo_pgsql \
-        sockets \
-        zip \
-        sysvsem \
-    && docker-php-ext-enable sysvsem \
-    && rm -rf /tmp/* /var/cache/apk/*
+# Build stage
+FROM php:${PHP_VERSION}-fpm-alpine${ALPINE_VERSION} AS builder
 
-# Установка PECL расширений
-RUN pecl install -o -f \
-        apcu \
-        amqp \
-        igbinary \
-        redis \
-    && docker-php-ext-enable \
-        apcu \
-        amqp \
-        igbinary \
-        redis
-
-# Установка и настройка Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-    && composer clear-cache
-
-# Настройка пользователя www-data
-RUN chmod g+w /usr/local/etc/php/conf.d/ \
-    && deluser www-data || true \
-    && delgroup staff || true \
-    && addgroup -g 1001 staff \
-    && adduser -D -u 1000 -G staff www-data \
-    && chown www-data:staff /var/www \
-    && echo 'www-data ALL=(ALL:ALL) NOPASSWD: ALL' > /etc/sudoers.d/www-data
-
-# Переменные
+# Build arguments
 ARG UID=1000
 ARG GID=1001
-ENV TZ=Europe/Moscow APP_DIR=/var/www/app PHP_CONF_DIR=/usr/local/etc/php/conf.d
+ARG TZ=Europe/Moscow
+ARG APP_DIR=/var/www/app
+ARG PHP_CONF_DIR=/usr/local/etc/php/conf.d
 
-# Создание директорий и файлов конфигурации
-RUN mkdir -p $PHP_CONF_DIR && touch $PHP_CONF_DIR/custom.ini
+# Environment variables
+ENV TZ=${TZ} \
+    APP_DIR=${APP_DIR} \
+    PHP_CONF_DIR=${PHP_CONF_DIR}
 
-# Копирование файлов
-COPY --chown=www-data:www-data ./ $APP_DIR
-COPY ./.docker/app/php/fpm/php.ini /usr/local/etc/php/php.ini
+# System dependencies and PHP extensions installation
+RUN apk update && apk upgrade && \
+    apk add --no-cache \
+        git unzip wget sudo openssh-client bash \
+        icu-dev libxml2-dev gmp-dev libpng-dev libzip-dev \
+        postgresql-dev rabbitmq-c-dev libssh-dev gettext-dev \
+        linux-headers php84-dev autoconf gcc g++ make \
+        pcre-dev zlib-dev && \
+    docker-php-ext-install -j$(nproc) \
+        bcmath gettext gd gmp intl opcache pcntl \
+        pdo_pgsql sockets zip sysvsem && \
+    docker-php-ext-enable sysvsem && \
+    # Install PECL extensions
+    pecl install -o -f apcu amqp igbinary redis && \
+    docker-php-ext-enable apcu amqp igbinary redis && \
+    # Cleanup
+    rm -rf /tmp/* /var/cache/apk/*
 
-# Удаление Xdebug
-RUN pecl uninstall xdebug || true && \
-    rm -f $PHP_CONF_DIR/docker-php-ext-xdebug.ini $PHP_CONF_DIR/xdebug.ini
+# Composer installation
+COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
+RUN composer clear-cache
 
-# Установка временной зоны и PHP-настроек
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
-    echo $TZ > /etc/timezone && \
-    echo "date.timezone=$TZ" > $PHP_CONF_DIR/custom.ini && \
-    rm -rf $APP_DIR/var/cache/* /var/www/app/var/log/* && \
-    chmod +x $APP_DIR/.docker/app/cmd.sh
-
-# Установка рабочей директории
-WORKDIR $APP_DIR
-
-# Изменение UID и GID пользователя www-data
-RUN deluser www-data && delgroup staff && \
+# User configuration
+RUN chmod g+w ${PHP_CONF_DIR} && \
+    deluser www-data || true && \
+    delgroup staff || true && \
     addgroup -g ${GID} staff && \
     adduser -D -u ${UID} -G staff www-data && \
+    chown www-data:staff /var/www && \
+    echo 'www-data ALL=(ALL:ALL) NOPASSWD: ALL' > /etc/sudoers.d/www-data
+
+# Application setup
+RUN mkdir -p ${PHP_CONF_DIR} && \
+    touch ${PHP_CONF_DIR}/custom.ini && \
+    ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && \
+    echo ${TZ} > /etc/timezone && \
+    echo "date.timezone=${TZ}" > ${PHP_CONF_DIR}/custom.ini
+
+# Copy application files
+COPY --chown=www-data:staff ./ ${APP_DIR}
+COPY ./.docker/app/php/fpm/php.ini /usr/local/etc/php/php.ini
+
+# Cleanup and permissions
+RUN rm -rf ${APP_DIR}/var/cache/* /var/www/app/var/log/* && \
+    chmod +x ${APP_DIR}/.docker/app/cmd.sh && \
     chown -R www-data:staff /var/www
 
-# Установка пользователя и команды по умолчанию
+WORKDIR ${APP_DIR}
 USER www-data
 CMD ["/var/www/app/.docker/app/cmd.sh"]
