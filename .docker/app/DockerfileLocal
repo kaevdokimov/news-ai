@@ -1,18 +1,49 @@
-FROM cr.yandex/crpoc9esj8m86e03jc1m/env/php:8-4-fpm
+FROM php:8.4-fpm-alpine3.22
 
-LABEL maintainer="aleksey@kolyadin.ru"
-LABEL maintainer="Kirill.Evdokimov@easycomm.ru"
+# Установка системных зависимостей и расширений PHP
+RUN apk update && apk upgrade && apk add --no-cache \
+    git unzip wget sudo openssh-client bash \
+    icu-dev libxml2-dev gmp-dev libpng-dev libzip-dev postgresql-dev rabbitmq-c-dev libssh-dev \
+    gettext-dev linux-headers \
+    && docker-php-ext-install -j$(nproc) \
+        bcmath \
+        gettext \
+        gd \
+        gmp \
+        intl \
+        opcache \
+        pcntl \
+        pdo_pgsql \
+        sockets \
+        zip \
+        sysvsem \
+    && docker-php-ext-enable sysvsem \
+    && rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
+
+# Установка PECL расширений
+RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
+    && pecl install -o -f \
+        apcu \
+        amqp \
+        igbinary \
+        redis \
+        xdebug \
+    && docker-php-ext-enable \
+        apcu \
+        amqp \
+        igbinary \
+        redis \
+        xdebug \
+    && apk del .build-deps
+
+# Установка и настройка Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
+    && composer clear-cache
 
 # Переменные
 ARG UID=1000
 ARG GID=1001
 ENV TZ=Europe/Moscow APP_DIR=/var/www/app PHP_CONF_DIR=/usr/local/etc/php/conf.d
-
-# Только для local образа
-COPY ./id_rsa.pub /root/.ssh/id_rsa.pub
-COPY ./id_rsa /root/.ssh/id_rsa
-RUN chmod 600 /root/.ssh/id_rsa.pub
-RUN chmod 600 /root/.ssh/id_rsa
 
 # Создание директорий и файлов конфигурации
 RUN mkdir -p $PHP_CONF_DIR && touch $PHP_CONF_DIR/custom.ini
@@ -31,6 +62,14 @@ RUN docker-php-ext-enable xdebug \
     && echo "xdebug.log_level=0" >> $PHP_CONF_DIR/docker-php-ext-xdebug.ini \
     && echo "xdebug.idekey = PHPSTORM" >> $PHP_CONF_DIR/docker-php-ext-xdebug.ini
 
+# Настройка пользователя www-data
+RUN chmod g+w /usr/local/etc/php/conf.d/ \
+    && addgroup -g ${GID} -S staff \
+    && deluser www-data \
+    && adduser -D -u ${UID} -G staff www-data \
+    && chown www-data:staff /var/www \
+    && echo 'www-data ALL=(ALL:ALL) NOPASSWD: ALL' > /etc/sudoers.d/www-data
+
 # Установка временной зоны и других настроек в одном слое
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
     echo $TZ > /etc/timezone && \
@@ -40,9 +79,6 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
 
 # Установка рабочей директории
 WORKDIR $APP_DIR
-
-# Изменение UID и GID пользователя www-data
-RUN usermod --uid ${UID} www-data && groupmod --gid $GID www-data
 
 # Установка пользователя и команды по умолчанию
 USER www-data

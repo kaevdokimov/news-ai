@@ -1,7 +1,49 @@
-FROM cr.yandex/crpoc9esj8m86e03jc1m/env/php:8-4-fpm
+FROM php:8.4-fpm-alpine3.22
 
-LABEL maintainer="aleksey@kolyadin.ru"
-LABEL maintainer="Kirill.Evdokimov@easycomm.ru"
+# Установка системных зависимостей и расширений PHP
+RUN apk update && apk upgrade && apk add --no-cache \
+    git unzip wget sudo openssh-client bash \
+    icu-dev libxml2-dev gmp-dev libpng-dev libzip-dev postgresql-dev rabbitmq-c-dev libssh-dev \
+    gettext-dev linux-headers \
+    && docker-php-ext-install -j$(nproc) \
+        bcmath \
+        gettext \
+        gd \
+        gmp \
+        intl \
+        opcache \
+        pcntl \
+        pdo_pgsql \
+        sockets \
+        zip \
+        sysvsem \
+    && docker-php-ext-enable sysvsem \
+    && rm -rf /tmp/* /var/cache/apk/*
+
+# Установка PECL расширений
+RUN pecl install -o -f \
+        apcu \
+        amqp \
+        igbinary \
+        redis \
+    && docker-php-ext-enable \
+        apcu \
+        amqp \
+        igbinary \
+        redis
+
+# Установка и настройка Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
+    && composer clear-cache
+
+# Настройка пользователя www-data
+RUN chmod g+w /usr/local/etc/php/conf.d/ \
+    && deluser www-data || true \
+    && delgroup staff || true \
+    && addgroup -g 1001 staff \
+    && adduser -D -u 1000 -G staff www-data \
+    && chown www-data:staff /var/www \
+    && echo 'www-data ALL=(ALL:ALL) NOPASSWD: ALL' > /etc/sudoers.d/www-data
 
 # Переменные
 ARG UID=1000
@@ -30,7 +72,10 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
 WORKDIR $APP_DIR
 
 # Изменение UID и GID пользователя www-data
-RUN usermod --uid ${UID} www-data && groupmod --gid $GID www-data
+RUN deluser www-data && delgroup staff && \
+    addgroup -g ${GID} staff && \
+    adduser -D -u ${UID} -G staff www-data && \
+    chown -R www-data:staff /var/www
 
 # Установка пользователя и команды по умолчанию
 USER www-data
