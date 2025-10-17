@@ -9,7 +9,7 @@
         "ext-iconv": "*",
         "ext-simplexml": "*",
         "ext-zend-opcache": "*",
-        "doctrine/dbal": "^3.10.3",
+        "doctrine/dbal": "^4.3.4",
         "doctrine/doctrine-bundle": "^2.18.0",
         "doctrine/doctrine-migrations-bundle": "^3.5.0",
         "doctrine/orm": "^3.5.2",
