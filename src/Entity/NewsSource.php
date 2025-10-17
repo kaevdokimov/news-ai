@@ -13,12 +13,16 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: NewsSourceRepository::class)]
 #[ORM\Table(name: 'news_sources')]
-class NewsSource
+class NewsSource implements \Stringable
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    private ?int $id = null;
+    public ?int $id = null {
+        get {
+            return $this->id;
+        }
+    }
 
     #[ORM\Column(length: 255)]
     #[Assert\NotBlank]
@@ -50,17 +54,16 @@ class NewsSource
      * @var Collection<int, NewsItem>
      */
     #[ORM\OneToMany(targetEntity: NewsItem::class, mappedBy: 'source', cascade: ['persist', 'remove'])]
-    private Collection $newsItems;
+    private Collection $newsItems {
+        get {
+            return $this->newsItems;
+        }
+    }
 
     public function __construct()
     {
         $this->newsItems = new ArrayCollection();
         $this->createdAt = new \DateTime();
-    }
-
-    public function getId(): ?int
-    {
-        return $this->id;
     }
 
     public function getName(): ?string
@@ -145,14 +148,6 @@ class NewsSource
         $this->updatedAt = $updatedAt;
 
         return $this;
-    }
-
-    /**
-     * @return Collection<int, NewsItem>
-     */
-    public function getNewsItems(): Collection
-    {
-        return $this->newsItems;
     }
 
     public function addNewsItem(NewsItem $newsItem): static

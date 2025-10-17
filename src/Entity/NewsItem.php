@@ -14,7 +14,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[ORM\Index(name: 'idx_published_at', columns: ['published_at'])]
 #[ORM\Index(name: 'idx_source_id', columns: ['source_id'])]
 #[ORM\UniqueConstraint(name: 'unique_guid_per_source', columns: ['guid', 'source_id'])]
-class NewsItem
+class NewsItem implements \Stringable
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]

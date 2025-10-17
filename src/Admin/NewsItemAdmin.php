@@ -17,6 +17,7 @@ use Symfony\Component\Form\Extension\Core\Type\UrlType;
 
 class NewsItemAdmin extends AbstractAdmin
 {
+    #[\Override]
     public function toString(object $object): string
     {
         return $object instanceof NewsItem && $object->getTitle()

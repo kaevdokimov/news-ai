@@ -18,19 +18,15 @@ use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-class RssParserService
+readonly class RssParserService
 {
     private HttpClientInterface $httpClient;
-    private EntityManagerInterface $entityManager;
-    private NewsItemRepository $newsItemRepository;
-    private LoggerInterface $logger;
-    private TranslatorInterface $translator;
 
     public function __construct(
-        EntityManagerInterface $entityManager,
-        NewsItemRepository $newsItemRepository,
-        LoggerInterface $logger,
-        TranslatorInterface $translator,
+        private EntityManagerInterface $entityManager,
+        private NewsItemRepository $newsItemRepository,
+        private LoggerInterface $logger,
+        private TranslatorInterface $translator,
     ) {
         $this->httpClient = HttpClient::create([
             'timeout' => 30,
@@ -38,10 +34,6 @@ class RssParserService
                 'User-Agent' => 'Mozilla/5.0 (compatible; NewsParser/1.0)',
             ],
         ]);
-        $this->entityManager = $entityManager;
-        $this->newsItemRepository = $newsItemRepository;
-        $this->logger = $logger;
-        $this->translator = $translator;
     }
 
     /**
@@ -56,7 +48,7 @@ class RssParserService
         $this->logger->info($this->translator->trans('rss_parser.starting', [
             '%name%' => $source->getName(),
         ]), [
-            'source_id' => $source->getId(),
+            'source_id' => $source->id,
             'url' => $source->getUrl(),
         ]);
 
@@ -89,7 +81,7 @@ class RssParserService
                     }
                 } catch (\Exception $e) {
                     $this->logger->warning($this->translator->trans('rss_parser.item_parse_error'), [
-                        'source_id' => $source->getId(),
+                        'source_id' => $source->id,
                         'error' => $e->getMessage(),
                     ]);
                 }
@@ -100,7 +92,7 @@ class RssParserService
             $this->entityManager->flush();
 
             $this->logger->info($this->translator->trans('rss_parser.parsing_completed'), [
-                'source_id' => $source->getId(),
+                'source_id' => $source->id,
                 'items_processed' => $itemsCount,
                 'message' => $this->translator->trans('rss_parser.items_processed', [
                     '%count%' => $itemsCount,
@@ -110,7 +102,7 @@ class RssParserService
             return $itemsCount;
         } catch (\Exception $e) {
             $this->logger->error($this->translator->trans('rss_parser.parsing_failed'), [
-                'source_id' => $source->getId(),
+                'source_id' => $source->id,
                 'url' => $source->getUrl(),
                 'error' => $e->getMessage(),
             ]);
@@ -173,11 +165,11 @@ class RssParserService
             $this->entityManager->flush();
 
             return $newsItem;
-        } catch (UniqueConstraintViolationException $e) {
+        } catch (UniqueConstraintViolationException) {
             // Игнорируем ошибку дубликата
             $this->logger->info($this->translator->trans('rss_parser.missing_duplicate_news'), [
                 'guid' => $guid,
-                'source_id' => $source->getId(),
+                'source_id' => $source->id,
                 'source_name' => $source->getName(),
             ]);
 
@@ -185,7 +177,7 @@ class RssParserService
         } catch (\Exception $e) {
             $this->logger->error($this->translator->trans('rss_parser.error_saving_news'), [
                 'guid' => $guid,
-                'source_id' => $source->getId(),
+                'source_id' => $source->id,
                 'error' => $e->getMessage(),
             ]);
 
@@ -255,7 +247,7 @@ class RssParserService
                 if (!empty($dateString)) {
                     try {
                         return new \DateTime($dateString);
-                    } catch (\Exception $e) {
+                    } catch (\Exception) {
                         // Продолжаем поиск
                     }
                 }
