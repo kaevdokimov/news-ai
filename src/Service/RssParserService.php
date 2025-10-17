@@ -5,10 +5,16 @@ namespace App\Service;
 use App\Entity\NewsItem;
 use App\Entity\NewsSource;
 use App\Repository\NewsItemRepository;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpClient\HttpClient;
+use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 class RssParserService
 {
@@ -16,11 +22,13 @@ class RssParserService
     private EntityManagerInterface $entityManager;
     private NewsItemRepository $newsItemRepository;
     private LoggerInterface $logger;
+    private TranslatorInterface $translator;
 
     public function __construct(
         EntityManagerInterface $entityManager,
         NewsItemRepository $newsItemRepository,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        TranslatorInterface $translator
     ) {
         $this->httpClient = HttpClient::create([
             'timeout' => 30,
@@ -31,11 +39,21 @@ class RssParserService
         $this->entityManager = $entityManager;
         $this->newsItemRepository = $newsItemRepository;
         $this->logger = $logger;
+        $this->translator = $translator;
     }
 
+    /**
+     * @throws TransportExceptionInterface
+     * @throws ServerExceptionInterface
+     * @throws RedirectionExceptionInterface
+     * @throws ClientExceptionInterface
+     * @throws \Exception
+     */
     public function parseRssFeed(NewsSource $source): int
     {
-        $this->logger->info('Starting RSS parsing for source: ' . $source->getName(), [
+        $this->logger->info($this->translator->trans('rss_parser.starting', [
+            '%name%' => $source->getName()
+        ]), [
             'source_id' => $source->getId(),
             'url' => $source->getUrl(),
         ]);
@@ -43,14 +61,14 @@ class RssParserService
         try {
             $response = $this->httpClient->request('GET', $source->getUrl());
             $content = $response->getContent();
-            
+
             if (empty($content)) {
-                throw new \Exception('Empty response from RSS feed');
+                throw new \RuntimeException($this->translator->trans('rss_parser.empty_response'));
             }
 
             $xml = simplexml_load_string($content);
             if ($xml === false) {
-                throw new \Exception('Failed to parse XML content');
+                throw new \RuntimeException($this->translator->trans('rss_parser.xml_parse_error'));
             }
 
             $itemsCount = 0;
@@ -68,7 +86,7 @@ class RssParserService
                         $itemsCount++;
                     }
                 } catch (\Exception $e) {
-                    $this->logger->warning('Failed to parse RSS item', [
+                    $this->logger->warning($this->translator->trans('rss_parser.item_parse_error'), [
                         'source_id' => $source->getId(),
                         'error' => $e->getMessage(),
                     ]);
@@ -79,15 +97,18 @@ class RssParserService
             $source->setLastParsedAt(new \DateTime());
             $this->entityManager->flush();
 
-            $this->logger->info('RSS parsing completed', [
+            $this->logger->info($this->translator->trans('rss_parser.parsing_completed'), [
                 'source_id' => $source->getId(),
                 'items_processed' => $itemsCount,
+                'message' => $this->translator->trans('rss_parser.items_processed', [
+                    '%count%' => $itemsCount
+                ]),
             ]);
 
             return $itemsCount;
 
         } catch (\Exception $e) {
-            $this->logger->error('RSS parsing failed', [
+            $this->logger->error($this->translator->trans('rss_parser.parsing_failed'), [
                 'source_id' => $source->getId(),
                 'url' => $source->getUrl(),
                 'error' => $e->getMessage(),
@@ -123,16 +144,16 @@ class RssParserService
 
         // Получаем описание
         $description = $this->getItemValue($item, ['description', 'summary']);
-        
+
         // Получаем контент
         $content = $this->getItemValue($item, ['content:encoded', 'content', 'description']);
-        
+
         // Получаем ссылку
         $link = $this->getItemValue($item, ['link', 'href']);
-        
+
         // Получаем изображение
         $imageUrl = $this->getItemImage($item);
-        
+
         // Получаем дату публикации
         $publishedAt = $this->getItemDate($item);
 
@@ -146,9 +167,26 @@ class RssParserService
         $newsItem->setGuid($guid);
         $newsItem->setPublishedAt($publishedAt);
 
-        $this->entityManager->persist($newsItem);
-
-        return $newsItem;
+        try {
+            $this->entityManager->persist($newsItem);
+            $this->entityManager->flush();
+            return $newsItem;
+        } catch (UniqueConstraintViolationException $e) {
+            // Игнорируем ошибку дубликата
+            $this->logger->info($this->translator->trans('rss_parser.missing_duplicate_news'), [
+                'guid' => $guid,
+                'source_id' => $source->getId(),
+                'source_name' => $source->getName()
+            ]);
+            return null;
+        } catch (\Exception $e) {
+            $this->logger->error($this->translator->trans('rss_parser.error_saving_news'), [
+                'guid' => $guid,
+                'source_id' => $source->getId(),
+                'error' => $e->getMessage()
+            ]);
+            return null;
+        }
     }
 
     private function getItemValue(\SimpleXMLElement $item, array $fields): ?string
@@ -196,10 +234,8 @@ class RssParserService
 
         // Ищем изображения в описании
         $description = $this->getItemValue($item, ['description', 'content:encoded', 'content']);
-        if ($description) {
-            if (preg_match('/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i', $description, $matches)) {
-                return $matches[1];
-            }
+        if ($description && preg_match('/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i', $description, $matches)) {
+            return $matches[1];
         }
 
         return null;
@@ -208,14 +244,13 @@ class RssParserService
     private function getItemDate(\SimpleXMLElement $item): \DateTime
     {
         $dateFields = ['pubDate', 'published', 'updated', 'dc:date'];
-        
+
         foreach ($dateFields as $field) {
             if (isset($item->$field)) {
                 $dateString = (string) $item->$field;
                 if (!empty($dateString)) {
                     try {
-                        $date = new \DateTime($dateString);
-                        return $date;
+                        return new \DateTime($dateString);
                     } catch (\Exception $e) {
                         // Продолжаем поиск
                     }

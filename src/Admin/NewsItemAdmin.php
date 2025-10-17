@@ -15,6 +15,13 @@ use Symfony\Component\Form\Extension\Core\Type\UrlType;
 
 class NewsItemAdmin extends AbstractAdmin
 {
+    public function toString(object $object): string
+    {
+        return $object instanceof NewsItem && $object->getTitle()
+            ? (string) $object->getTitle()
+            : 'Новая новость';
+    }
+
     protected function configureFormFields(FormMapper $form): void
     {
         $form
@@ -118,10 +125,5 @@ class NewsItemAdmin extends AbstractAdmin
                 'label' => 'Обновлена',
                 'format' => 'd.m.Y H:i:s',
             ]);
-    }
-
-    public function toString(object $object): string
-    {
-        return $object instanceof NewsItem ? $object->getTitle() : 'Новость';
     }
 }

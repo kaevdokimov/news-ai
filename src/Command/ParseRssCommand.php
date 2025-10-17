@@ -2,7 +2,7 @@
 
 namespace App\Command;
 
-use App\Entity\NewsSource;
+use App\Message\ParseRssMessage;
 use App\Repository\NewsSourceRepository;
 use App\Service\RssParserService;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -11,18 +11,25 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Messenger\Exception\ExceptionInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[AsCommand(
     name: 'app:parse-rss',
-    description: 'Parse RSS feeds from news sources',
+    description: 'command.parse_rss.description',
 )]
 class ParseRssCommand extends Command
 {
     public function __construct(
         private NewsSourceRepository $newsSourceRepository,
         private RssParserService $rssParserService,
-        private MessageBusInterface $messageBus
+        private MessageBusInterface $messageBus,
+        private TranslatorInterface $translator
     ) {
         parent::__construct();
     }
@@ -30,11 +37,18 @@ class ParseRssCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addOption('source-id', null, InputOption::VALUE_OPTIONAL, 'Parse specific source by ID')
-            ->addOption('async', null, InputOption::VALUE_NONE, 'Process sources asynchronously using message queue')
-            ->setHelp('This command parses RSS feeds from configured news sources.');
+            ->addOption('source-id', null, InputOption::VALUE_OPTIONAL, $this->translator->trans('command.parse_rss.options.source_id'))
+            ->addOption('async', null, InputOption::VALUE_NONE, $this->translator->trans('command.parse_rss.options.async'))
+            ->setHelp($this->translator->trans('command.parse_rss.help'));
     }
 
+    /**
+     * @throws TransportExceptionInterface
+     * @throws ServerExceptionInterface
+     * @throws RedirectionExceptionInterface
+     * @throws ClientExceptionInterface
+     * @throws ExceptionInterface
+     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
@@ -44,7 +58,7 @@ class ParseRssCommand extends Command
         if ($sourceId) {
             $source = $this->newsSourceRepository->find($sourceId);
             if (!$source) {
-                $io->error(sprintf('Source with ID %d not found', $sourceId));
+                $io->error($this->translator->trans('command.parse_rss.messages.source_not_found', ['%id%' => $sourceId]));
                 return Command::FAILURE;
             }
             $sources = [$source];
@@ -53,20 +67,26 @@ class ParseRssCommand extends Command
         }
 
         if (empty($sources)) {
-            $io->warning('No active news sources found');
+            $io->warning($this->translator->trans('command.parse_rss.messages.no_active_sources'));
             return Command::SUCCESS;
         }
 
-        $io->title('RSS Feed Parser');
-        $io->info(sprintf('Found %d active news source(s)', count($sources)));
+        $io->title($this->translator->trans('command.parse_rss.messages.parsing_started'));
+        $io->info($this->translator->trans('command.parse_rss.messages.found_sources', ['%count%' => count($sources)]));
 
         if ($async) {
             return $this->processAsync($sources, $io);
-        } else {
-            return $this->processSync($sources, $io);
         }
+
+        return $this->processSync($sources, $io);
     }
 
+    /**
+     * @throws TransportExceptionInterface
+     * @throws ServerExceptionInterface
+     * @throws RedirectionExceptionInterface
+     * @throws ClientExceptionInterface
+     */
     private function processSync(array $sources, SymfonyStyle $io): int
     {
         $totalItems = 0;
@@ -81,55 +101,49 @@ class ParseRssCommand extends Command
                 $itemsCount = $this->rssParserService->parseRssFeed($source);
                 $totalItems += $itemsCount;
                 $successCount++;
-                
+
                 $io->newLine();
-                $io->success(sprintf(
-                    'Source "%s": %d new items parsed',
-                    $source->getName(),
-                    $itemsCount
-                ));
+                $io->success($this->translator->trans('command.parse_rss.messages.source_success', [
+                    '%name%' => $source->getName(),
+                    '%count%' => $itemsCount
+                ]));
             } catch (\Exception $e) {
                 $errorCount++;
                 $io->newLine();
-                $io->error(sprintf(
-                    'Source "%s": %s',
-                    $source->getName(),
-                    $e->getMessage()
-                ));
+                $io->error($this->translator->trans('command.parse_rss.messages.source_error', [
+                    '%name%' => $source->getName(),
+                    '%error%' => $e->getMessage()
+                ]));
             }
-            
+
             $progressBar->advance();
         }
 
         $progressBar->finish();
         $io->newLine(2);
 
-        $io->section('Summary');
-        $io->table(
-            ['Metric', 'Count'],
-            [
-                ['Total Sources', count($sources)],
-                ['Successful', $successCount],
-                ['Failed', $errorCount],
-                ['New Items', $totalItems],
-            ]
-        );
+        $io->success($this->translator->trans('command.parse_rss.messages.processing_complete', [
+            '%success%' => $successCount,
+            '%errors%' => $errorCount
+        ]));
 
-        return $errorCount > 0 ? Command::FAILURE : Command::SUCCESS;
+        $io->info($this->translator->trans('command.parse_rss.messages.items_processed', ['%total%' => $totalItems]));
+
+        return Command::SUCCESS;
     }
 
+    /**
+     * @throws ExceptionInterface
+     */
     private function processAsync(array $sources, SymfonyStyle $io): int
     {
-        $io->info('Processing sources asynchronously...');
+        $io->info($this->translator->trans('command.parse_rss.messages.async_processing', ['%count%' => count($sources)]));
 
         foreach ($sources as $source) {
-            $this->messageBus->dispatch(new \App\Message\ParseRssMessage($source->getId()));
-            $io->text(sprintf('Queued source: %s', $source->getName()));
+            $this->messageBus->dispatch(new ParseRssMessage($source->getId()));
         }
 
-        $io->success(sprintf('Queued %d sources for processing', count($sources)));
-        $io->note('Run "php bin/console messenger:consume async" to process the queue');
-
+        $io->success($this->translator->trans('command.parse_rss.messages.parsing_completed'));
         return Command::SUCCESS;
     }
 }

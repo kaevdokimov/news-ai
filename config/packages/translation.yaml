@@ -1,5 +1,12 @@
 framework:
-    default_locale: en
+    default_locale: ru
     translator:
         default_path: '%kernel.project_dir%/translations'
+        fallbacks: ['ru', 'en']
         providers:
+            translation.manager:
+                dsn: 'app.translation.provider'
+
+# Configure the default locale used by the translation service
+parameters:
+    locale: 'ru'

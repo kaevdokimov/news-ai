@@ -16,6 +16,13 @@ use Symfony\Component\Form\Extension\Core\Type\UrlType;
 
 class NewsSourceAdmin extends AbstractAdmin
 {
+    public function toString(object $object): string
+    {
+        return $object instanceof NewsSource && $object->getName()
+            ? (string) $object->getName()
+            : 'Новый источник';
+    }
+
     protected function configureFormFields(FormMapper $form): void
     {
         $form
@@ -101,10 +108,5 @@ class NewsSourceAdmin extends AbstractAdmin
     protected function configureRoutes(RouteCollectionInterface $collection): void
     {
         $collection->add('parse', $this->getRouterIdParameter() . '/parse');
-    }
-
-    public function toString(object $object): string
-    {
-        return $object instanceof NewsSource ? $object->getName() : 'Источник новостей';
     }
 }

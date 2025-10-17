@@ -1,0 +1,57 @@
+news: 'Новости'
+sources_news: 'Источники новостей'
+
+'Default': 'По умолчанию'
+'Actions': 'Действия'
+'Sources News': 'Источники новостей'
+'News': 'Новости'
+'News Source List': 'Список источников новостей'
+'News Source Create': 'Добавить Источник новостей'
+'News Item List': 'Список новостей'
+'News Item Create': 'Добавить новость'
+
+
+# Сообщения командной строки
+command:
+  parse_rss:
+    description: 'Парсинг RSS-лент из источников новостей'
+    help: 'Эта команда парсит RSS-ленты из настроенных источников новостей.'
+    options:
+      source_id: 'ID источника для парсинга'
+      async: 'Обрабатывать источники асинхронно с использованием очереди сообщений'
+    messages:
+      source_not_found: 'Источник с ID %id% не найден'
+      no_active_sources: 'Активные источники новостей не найдены'
+      found_sources: 'Найдено %count% активных источников'
+      parsing_started: 'Начат парсинг RSS-лент'
+      parsing_completed: 'Парсинг успешно завершен'
+      source_success: 'Источник "%name%": обработано %count% новых записей'
+      source_error: 'Ошибка при обработке источника "%name%": %error%'
+      async_processing: 'Запущена асинхронная обработка %count% источников'
+      sync_processing: 'Запущена синхронная обработка %count% источников'
+      processing_complete: 'Обработка завершена. Успешно: %success%, с ошибками: %errors%'
+      items_processed: 'Всего обработано записей: %total%'
+
+
+# Общие сообщения
+common:
+  error: 'Ошибка'
+  warning: 'Предупреждение'
+  success: 'Успешно'
+  info: 'Информация'
+  not_found: 'Не найдено'
+  invalid_data: 'Некорректные данные'
+
+# Сообщения сервиса RSS-парсера
+rss_parser:
+  starting: 'Начало парсинга RSS-ленты для источника: %name%'
+  empty_response: 'Пустой ответ от RSS-ленты'
+  xml_parse_error: 'Ошибка при разборе XML-контента'
+  item_parse_error: 'Не удалось разобрать элемент RSS-ленты'
+  parsing_completed: 'Парсинг RSS-ленты завершен'
+  items_processed: 'Обработано новостей: %count%'
+  parsing_failed: 'Ошибка при парсинге RSS-ленты'
+  source_not_active: 'Источник не активен, пропускаем: %name%'
+  source_not_found: 'Источник новостей не найден (ID: %id%)'
+  missing_duplicate_news: 'Пропущен дубликат новости'
+  error_saving_news: 'Ошибка при сохранении новости'

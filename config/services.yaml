@@ -28,7 +28,12 @@ services:
     app.admin.news_source:
         class: App\Admin\NewsSourceAdmin
         tags:
-            - { name: sonata.admin, manager_type: orm, group: 'Новости', label: 'Источники новостей' }
+            - {
+                name: sonata.admin,
+                manager_type: orm,
+                group: 'group_news',
+                label: 'sources_news'
+            }
         arguments:
             - null
             - App\Entity\NewsSource
@@ -37,7 +42,12 @@ services:
     app.admin.news_item:
         class: App\Admin\NewsItemAdmin
         tags:
-            - { name: sonata.admin, manager_type: orm, group: 'Новости', label: 'Новости' }
+            - {
+                name: sonata.admin,
+                manager_type: orm,
+                group: 'group_news',
+                label: 'news'
+            }
         arguments:
             - null
             - App\Entity\NewsItem

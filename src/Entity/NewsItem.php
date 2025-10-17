@@ -9,15 +9,19 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: NewsItemRepository::class)]
 #[ORM\Table(name: 'news_items')]
-#[ORM\Index(columns: ['published_at'], name: 'idx_published_at')]
-#[ORM\Index(columns: ['source_id'], name: 'idx_source_id')]
+#[ORM\Index(name: 'idx_published_at', columns: ['published_at'])]
+#[ORM\Index(name: 'idx_source_id', columns: ['source_id'])]
 #[ORM\UniqueConstraint(name: 'unique_guid_per_source', columns: ['guid', 'source_id'])]
 class NewsItem
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    private ?int $id = null;
+    private ?int $id = null {
+        get {
+            return $this->id;
+        }
+    }
 
     #[ORM\Column(length: 500)]
     #[Assert\NotBlank]
@@ -61,11 +65,6 @@ class NewsItem
     public function __construct()
     {
         $this->createdAt = new \DateTime();
-    }
-
-    public function getId(): ?int
-    {
-        return $this->id;
     }
 
     public function getTitle(): ?string

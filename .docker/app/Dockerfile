@@ -27,7 +27,7 @@ RUN apk update && apk upgrade && \
         pcre-dev zlib-dev && \
     docker-php-ext-install -j$(nproc) \
         bcmath gettext gd gmp intl opcache pcntl \
-        pdo_pgsql sockets zip sysvsem && \
+        pdo_pgsql simplexml sockets zip sysvsem && \
     docker-php-ext-enable sysvsem && \
     # Install PECL extensions with build deps
     apk add --no-cache --virtual .build-deps $PHPIZE_DEPS && \
