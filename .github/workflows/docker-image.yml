@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Build the local Docker image
       run: docker build . --file .docker/app/DockerfileLocal --tag app-local:$(date +%s)
     - name: Build the Docker image
