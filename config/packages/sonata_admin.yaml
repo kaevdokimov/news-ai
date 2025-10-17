@@ -1,0 +1,17 @@
+sonata_admin:
+    title: 'News AI Admin'
+    title_logo: '/bundles/sonataadmin/logo_title.png'
+    options:
+        confirm_exit: true
+        use_select2: true
+        use_icheck: true
+        use_bootlint: false
+        use_stickyforms: true
+        default_group: 'default'
+        default_icon: 'fa fa-folder'
+    dashboard:
+        blocks:
+            - { position: 'left', type: 'sonata.admin.block.admin_list' }
+            - { position: 'right', type: 'sonata.admin.block.search_result_list' }
+    security:
+        handler: sonata.admin.security.handler.noop

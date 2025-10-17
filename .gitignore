@@ -1,23 +1,51 @@
-
-###> symfony/framework-bundle ###
-/.env.local
-/.env.local.php
-/.env.*.local
-/config/secrets/prod/prod.decrypt.private.php
-/public/bundles/
+# Symfony
 /var/
 /vendor/
-###< symfony/framework-bundle ###
+.env
+.env.local
+.env.local.php
+.env.*.local
+/config/secrets/
+/public/bundles/
 
-###> phpunit/phpunit ###
-/phpunit.xml
-/.phpunit.cache/
-###< phpunit/phpunit ###
+# PhpStorm
+/.idea/
 
-###> symfony/asset-mapper ###
-/public/assets/
-/assets/vendor/
-###< symfony/asset-mapper ###
+# VS Code
+/.vscode/
 
-!/.env.dev
-!/.env.test
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+/tmp/news_parsing.log
+/tmp/worker.log
+
+# Cache
+/var/cache/
+/var/log/
+/var/sessions/
+
+# Database
+*.sqlite
+*.db
+
+# Docker
+.docker/
+
+# Composer
+composer.phar
+
+# Node modules (if using npm/yarn)
+node_modules/
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Temporary files
+*.tmp
+*.temp

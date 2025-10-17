@@ -20,7 +20,7 @@ ENV TZ=${TZ} \
 # System dependencies and PHP extensions installation
 RUN apk update && apk upgrade && \
     apk add --no-cache \
-        git unzip wget sudo openssh-client bash \
+        git unzip wget sudo openssh-client bash dcron \
         icu-dev libxml2-dev gmp-dev libpng-dev libzip-dev \
         postgresql-dev rabbitmq-c-dev libssh-dev gettext-dev \
         linux-headers php84-dev autoconf gcc g++ make \
@@ -29,10 +29,12 @@ RUN apk update && apk upgrade && \
         bcmath gettext gd gmp intl opcache pcntl \
         pdo_pgsql sockets zip sysvsem && \
     docker-php-ext-enable sysvsem && \
-    # Install PECL extensions
+    # Install PECL extensions with build deps
+    apk add --no-cache --virtual .build-deps $PHPIZE_DEPS && \
     pecl install -o -f apcu amqp igbinary redis && \
     docker-php-ext-enable apcu amqp igbinary redis && \
     # Cleanup
+    apk del .build-deps && \
     rm -rf /tmp/* /var/cache/apk/*
 
 # Composer installation
@@ -40,7 +42,11 @@ COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 RUN composer clear-cache
 
 # User configuration
-RUN chmod g+w ${PHP_CONF_DIR} && \
+RUN mkdir -p ${PHP_CONF_DIR} && \
+    touch ${PHP_CONF_DIR}/custom.ini && \
+    ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && \
+    echo ${TZ} > /etc/timezone && \
+    echo "date.timezone=${TZ}" > ${PHP_CONF_DIR}/custom.ini && \
     deluser www-data || true && \
     delgroup staff || true && \
     addgroup -g ${GID} staff && \
@@ -58,6 +64,12 @@ RUN mkdir -p ${PHP_CONF_DIR} && \
 # Copy application files
 COPY --chown=www-data:staff ./ ${APP_DIR}
 COPY ./.docker/app/php/fpm/php.ini /usr/local/etc/php/php.ini
+
+# Setup cron for news parsing
+RUN echo "*/5 * * * *  php /var/www/app/bin/console app:parse-rss --async" | crontab - && \
+    mkdir -p /var/log && \
+    touch /var/log/news_parsing.log && \
+    chown www-data:staff /var/log/news_parsing.log
 
 # Cleanup and permissions
 RUN rm -rf ${APP_DIR}/var/cache/* /var/www/app/var/log/* && \

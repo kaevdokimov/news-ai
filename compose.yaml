@@ -96,6 +96,40 @@ services:
       MP_SMTP_AUTH_ALLOW_INSECURE: 1
 ###< symfony/mailer ###
 
+#    # Сервис для периодического парсинга RSS
+#  news_ai_rss_parser:
+#      container_name: news_ai_rss_parser
+#      image: alpine/curl:latest
+#      restart: unless-stopped
+#      depends_on:
+#        - news_ai_app
+#      command: >
+#        sh -c "while true; do
+#          echo 'Running RSS parser...' &&
+#          docker exec news_ai_app php bin/console app:parse-rss --async &&
+#          sleep 60;
+#        done"
+#      volumes:
+#        - /var/run/docker.sock:/var/run/docker.sock
+#      environment:
+#        - APP_ENV=${APP_ENV:-dev}
+#
+#  news_ai_consumer:
+#    container_name: news_ai_consumer
+#    image: alpine/curl:latest
+#    restart: unless-stopped
+#    depends_on:
+#      - news_ai_app
+#    command: >
+#      sh -c "while true; do
+#        echo 'Running consumer...' &&
+#        docker exec news_ai_app php bin/console messenger:consume async --memory-limit=128M --time-limit=600;
+#      done"
+#    volumes:
+#      - /var/run/docker.sock:/var/run/docker.sock
+#    environment:
+#      - APP_ENV=${APP_ENV:-dev}
+
 volumes:
   postgres_data:
     driver: local

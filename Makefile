@@ -31,7 +31,7 @@ help:
 # Основные команды
 ############################
 # Полная инициализация проекта
-init: docker-down-clear docker-pull docker-build up app-init clean
+init: docker-down-clear docker-pull docker-build up app-init
 	@echo "${GREEN}Проект успешно инициализирован${NC}"
 
 # Запуск контейнеров
@@ -83,7 +83,7 @@ docker-build:
 # Команды для начальной настройки приложения
 ############################
 # Инициализация приложения
-app-init: composer-install db-create migrations-up db-fixtures encryption-key jwt-ssl
+app-init: composer-install db-create migrations-up db-fixtures
 	@echo "${GREEN}Приложение успешно инициализировано${NC}"
 
 # Генерация JWT ключей
@@ -113,13 +113,14 @@ migrations-up:
 # Загрузка фикстур
 db-fixtures:
 	@echo "${BLUE}Загрузка фикстур...${NC}"
-	docker compose run --rm news_ai_app php bin/console doctrine:fixtures:load --group=dev -n --append
+	#docker compose run --rm news_ai_app php bin/console doctrine:fixtures:load --group=dev -n --append
+	docker compose run --rm news_ai_app php bin/console doctrine:fixtures:load -n --append
 	@echo "${GREEN}Фикстуры загружены${NC}"
 
 # Генерация ключа шифрования
 encryption-key:
 	@echo "${BLUE}Генерация ключа шифрования...${NC}"
-	docker compose run --rm news_ai_app php bin/console app:encryption:generate-key
+	docker compose run --rm news_ai_app php bin/console secrets:generate-keys
 	@echo "${GREEN}Ключ шифрования сгенерирован${NC}"
 
 # Запуск консоли в контейнере
@@ -130,6 +131,7 @@ console:
 ############################
 # Команды для управления зависимостями через Composer
 ############################
+
 # Обновление зависимостей
 composer-update:
 	@echo "${BLUE}Обновление зависимостей...${NC}"
@@ -161,7 +163,7 @@ messenger-debug:
 # Запуск обработки сообщений
 messenger-consume:
 	@echo "${BLUE}Запуск обработки сообщений...${NC}"
-	docker-compose run --rm news_ai_app php -d memory_limit=450M bin/console messenger:consume news_ai_high_priority news_ai_low_priority failed -vvv --profile
+	docker-compose run --rm news_ai_app php -d memory_limit=450M bin/console messenger:consume async -vvv --memory-limit=128M --time-limit=3600 --profile
 	@echo "${GREEN}Обработка сообщений запущена${NC}"
 
 # Просмотр статистики очередей
@@ -175,3 +177,17 @@ messenger-stop:
 	@echo "${BLUE}Остановка обработчиков сообщений...${NC}"
 	docker-compose run --rm news_ai_app php bin/console messenger:stop-workers --profile
 	@echo "${GREEN}Обработчики остановлены${NC}"
+
+############################
+# Команды для запуска парсинга
+############################
+
+parse:
+	@echo "${BLUE}📰 Запуск парсинга новостей...${NC}"
+	docker-compose run --rm news_ai_app php bin/console app:parse-rss --async
+	@echo "${GREEN}✅ Парсинг запущен асинхронно!${NC}"
+
+worker:
+	@echo "${BLUE}⚙️ Запуск воркера очередей...${NC}"
+	docker-compose run --rm news_ai_app php -d memory_limit=450M bin/console messenger:consume async -vvv --profile --memory-limit=128M --time-limit=3600
+	@echo "${GREEN}✅ Воркер запущен!${NC}"

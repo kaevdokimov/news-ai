@@ -63,7 +63,6 @@ RUN mkdir -p ${PHP_CONF_DIR} && \
 
 # Copy application files
 COPY --chown=www-data:staff ./ ${APP_DIR}
-COPY ./.docker/app/php/fpm/php-fpm.conf /usr/local/etc/php-fpm.d/99-symfony.conf
 COPY ./.docker/app/php/fpm/php.ini /usr/local/etc/php/php.ini
 
 # Xdebug configuration for local development
@@ -73,6 +72,12 @@ RUN echo "xdebug.mode=develop,debug,coverage" >> ${PHP_CONF_DIR}/docker-php-ext-
     echo "xdebug.log=/var/log/xdebug.log" >> ${PHP_CONF_DIR}/docker-php-ext-xdebug.ini && \
     echo "xdebug.log_level=0" >> ${PHP_CONF_DIR}/docker-php-ext-xdebug.ini && \
     echo "xdebug.idekey=PHPSTORM" >> ${PHP_CONF_DIR}/docker-php-ext-xdebug.ini
+
+# Setup cron for news parsing
+RUN echo "*/5 * * * *  php /var/www/app/bin/console app:parse-rss --async" | crontab - && \
+    mkdir -p /var/log && \
+    touch /var/log/news_parsing.log && \
+    chown www-data:staff /var/log/news_parsing.log
 
 # Cleanup and permissions
 RUN rm -rf ${APP_DIR}/var/cache/* /var/www/app/var/log/* && \
