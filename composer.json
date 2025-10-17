@@ -84,6 +84,12 @@
         "symfony/polyfill-php83": "*"
     },
     "scripts": {
+        "rector-check": "rector process --clear-cache --dry-run",
+        "rector": "rector process --clear-cache",
+        "lint": "phplint --configuration=.phplint.yml",
+        "php-cs-check": "php-cs-fixer check --config=.php-cs-fixer.dist.php",
+        "php-cs-fixer": "php-cs-fixer fix --diff --verbose --config=.php-cs-fixer.dist.php",
+        "phpstan": "phpstan --configuration=phpstan.dist.neon",
         "auto-scripts": {
             "cache:clear": "symfony-cmd",
             "assets:install %PUBLIC_DIR%": "symfony-cmd",
@@ -106,6 +112,9 @@
         }
     },
     "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.88.2",
+        "overtrue/phplint": "^9.6.2",
+        "rector/rector": "^2.2.3",
         "doctrine/doctrine-fixtures-bundle": "^4.2",
         "phpunit/phpunit": "^12.4.1",
         "roave/security-advisories": "dev-latest",

@@ -178,6 +178,34 @@ messenger-stop:
 	docker-compose run --rm news_ai_app php bin/console messenger:stop-workers --profile
 	@echo "${GREEN}Обработчики остановлены${NC}"
 
+
+############################
+# Команды для проверки и исправления качества кода
+############################
+# Проверка синтаксиса
+lint:
+	@echo "${BLUE}Проверка синтаксиса...${NC}"
+	docker compose run --rm news_ai_app composer lint
+	@echo "${GREEN}Проверка синтаксиса завершена${NC}"
+
+# Проверка стиля кода
+cs-check:
+	@echo "${BLUE}Проверка стиля кода...${NC}"
+	docker compose run --rm news_ai_app composer php-cs-check
+	@echo "${GREEN}Проверка стиля кода завершена${NC}"
+
+# Исправление стиля кода
+cs-fixer:
+	@echo "${BLUE}Исправление стиля кода...${NC}"
+	docker compose run --rm news_ai_app composer php-cs-fixer
+	@echo "${GREEN}Стиль кода исправлен${NC}"
+
+# Исправление кода, авторефакторинг
+rector:
+	@echo "${BLUE}Исправление кода, авторефакторинг...${NC}"
+	docker compose run --rm news_ai_app composer rector
+	@echo "${GREEN}Код исправлен, авторефакторинг завершен${NC}"
+
 ############################
 # Команды для запуска парсинга
 ############################

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\DataFixtures;
 
 use App\Entity\NewsSource;
@@ -44,7 +46,7 @@ class AppFixtures extends Fixture
             $source->setUrl($sourceData['url']);
             $source->setDescription($sourceData['description']);
             $source->setIsActive(true);
-            
+
             $manager->persist($source);
         }
 

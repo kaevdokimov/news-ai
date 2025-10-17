@@ -32,7 +32,9 @@ services:
       - host.docker.internal:host-gateway
     volumes:
       - ./:/var/www/app
+    user: "${UID:-1000}:${GID:-1000}"
     environment:
+      USER: ${USER:-www-data}
       UID: ${UID:-1000}
       GID: ${GID:-1001}
       CORS_ALLOW_ORIGIN: '*'

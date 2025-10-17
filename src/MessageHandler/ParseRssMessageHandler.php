@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\MessageHandler;
 
 use App\Message\ParseRssMessage;
@@ -16,9 +18,8 @@ class ParseRssMessageHandler
         private NewsSourceRepository $newsSourceRepository,
         private RssParserService $rssParserService,
         private LoggerInterface $logger,
-        private TranslatorInterface $translator
-    ) {
-    }
+        private TranslatorInterface $translator,
+    ) {}
 
     public function __invoke(ParseRssMessage $message): void
     {
@@ -30,16 +31,18 @@ class ParseRssMessageHandler
             ]), [
                 'source_id' => $message->getSourceId(),
             ]);
+
             return;
         }
 
         if (!$source->isActive()) {
             $this->logger->info($this->translator->trans('rss_parser.source_not_active', [
-                '%name%' => $source->getName()
+                '%name%' => $source->getName(),
             ]), [
                 'source_id' => $source->getId(),
                 'source_name' => $source->getName(),
             ]);
+
             return;
         }
 

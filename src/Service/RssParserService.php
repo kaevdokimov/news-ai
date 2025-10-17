@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
 use App\Entity\NewsItem;
@@ -28,7 +30,7 @@ class RssParserService
         EntityManagerInterface $entityManager,
         NewsItemRepository $newsItemRepository,
         LoggerInterface $logger,
-        TranslatorInterface $translator
+        TranslatorInterface $translator,
     ) {
         $this->httpClient = HttpClient::create([
             'timeout' => 30,
@@ -52,7 +54,7 @@ class RssParserService
     public function parseRssFeed(NewsSource $source): int
     {
         $this->logger->info($this->translator->trans('rss_parser.starting', [
-            '%name%' => $source->getName()
+            '%name%' => $source->getName(),
         ]), [
             'source_id' => $source->getId(),
             'url' => $source->getUrl(),
@@ -67,7 +69,7 @@ class RssParserService
             }
 
             $xml = simplexml_load_string($content);
-            if ($xml === false) {
+            if (false === $xml) {
                 throw new \RuntimeException($this->translator->trans('rss_parser.xml_parse_error'));
             }
 
@@ -83,7 +85,7 @@ class RssParserService
                 try {
                     $newsItem = $this->parseRssItem($item, $source);
                     if ($newsItem) {
-                        $itemsCount++;
+                        ++$itemsCount;
                     }
                 } catch (\Exception $e) {
                     $this->logger->warning($this->translator->trans('rss_parser.item_parse_error'), [
@@ -101,12 +103,11 @@ class RssParserService
                 'source_id' => $source->getId(),
                 'items_processed' => $itemsCount,
                 'message' => $this->translator->trans('rss_parser.items_processed', [
-                    '%count%' => $itemsCount
+                    '%count%' => $itemsCount,
                 ]),
             ]);
 
             return $itemsCount;
-
         } catch (\Exception $e) {
             $this->logger->error($this->translator->trans('rss_parser.parsing_failed'), [
                 'source_id' => $source->getId(),
@@ -170,21 +171,24 @@ class RssParserService
         try {
             $this->entityManager->persist($newsItem);
             $this->entityManager->flush();
+
             return $newsItem;
         } catch (UniqueConstraintViolationException $e) {
             // Игнорируем ошибку дубликата
             $this->logger->info($this->translator->trans('rss_parser.missing_duplicate_news'), [
                 'guid' => $guid,
                 'source_id' => $source->getId(),
-                'source_name' => $source->getName()
+                'source_name' => $source->getName(),
             ]);
+
             return null;
         } catch (\Exception $e) {
             $this->logger->error($this->translator->trans('rss_parser.error_saving_news'), [
                 'guid' => $guid,
                 'source_id' => $source->getId(),
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Admin;
 
 use App\Entity\NewsSource;
@@ -7,8 +9,8 @@ use Sonata\AdminBundle\Admin\AbstractAdmin;
 use Sonata\AdminBundle\Datagrid\DatagridMapper;
 use Sonata\AdminBundle\Datagrid\ListMapper;
 use Sonata\AdminBundle\Form\FormMapper;
-use Sonata\AdminBundle\Show\ShowMapper;
 use Sonata\AdminBundle\Route\RouteCollectionInterface;
+use Sonata\AdminBundle\Show\ShowMapper;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
@@ -107,6 +109,6 @@ class NewsSourceAdmin extends AbstractAdmin
 
     protected function configureRoutes(RouteCollectionInterface $collection): void
     {
-        $collection->add('parse', $this->getRouterIdParameter() . '/parse');
+        $collection->add('parse', $this->getRouterIdParameter().'/parse');
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command;
 
 use App\Message\ParseRssMessage;
@@ -29,7 +31,7 @@ class ParseRssCommand extends Command
         private NewsSourceRepository $newsSourceRepository,
         private RssParserService $rssParserService,
         private MessageBusInterface $messageBus,
-        private TranslatorInterface $translator
+        private TranslatorInterface $translator,
     ) {
         parent::__construct();
     }
@@ -59,6 +61,7 @@ class ParseRssCommand extends Command
             $source = $this->newsSourceRepository->find($sourceId);
             if (!$source) {
                 $io->error($this->translator->trans('command.parse_rss.messages.source_not_found', ['%id%' => $sourceId]));
+
                 return Command::FAILURE;
             }
             $sources = [$source];
@@ -68,11 +71,12 @@ class ParseRssCommand extends Command
 
         if (empty($sources)) {
             $io->warning($this->translator->trans('command.parse_rss.messages.no_active_sources'));
+
             return Command::SUCCESS;
         }
 
         $io->title($this->translator->trans('command.parse_rss.messages.parsing_started'));
-        $io->info($this->translator->trans('command.parse_rss.messages.found_sources', ['%count%' => count($sources)]));
+        $io->info($this->translator->trans('command.parse_rss.messages.found_sources', ['%count%' => \count($sources)]));
 
         if ($async) {
             return $this->processAsync($sources, $io);
@@ -93,26 +97,26 @@ class ParseRssCommand extends Command
         $successCount = 0;
         $errorCount = 0;
 
-        $progressBar = $io->createProgressBar(count($sources));
+        $progressBar = $io->createProgressBar(\count($sources));
         $progressBar->start();
 
         foreach ($sources as $source) {
             try {
                 $itemsCount = $this->rssParserService->parseRssFeed($source);
                 $totalItems += $itemsCount;
-                $successCount++;
+                ++$successCount;
 
                 $io->newLine();
                 $io->success($this->translator->trans('command.parse_rss.messages.source_success', [
                     '%name%' => $source->getName(),
-                    '%count%' => $itemsCount
+                    '%count%' => $itemsCount,
                 ]));
             } catch (\Exception $e) {
-                $errorCount++;
+                ++$errorCount;
                 $io->newLine();
                 $io->error($this->translator->trans('command.parse_rss.messages.source_error', [
                     '%name%' => $source->getName(),
-                    '%error%' => $e->getMessage()
+                    '%error%' => $e->getMessage(),
                 ]));
             }
 
@@ -124,7 +128,7 @@ class ParseRssCommand extends Command
 
         $io->success($this->translator->trans('command.parse_rss.messages.processing_complete', [
             '%success%' => $successCount,
-            '%errors%' => $errorCount
+            '%errors%' => $errorCount,
         ]));
 
         $io->info($this->translator->trans('command.parse_rss.messages.items_processed', ['%total%' => $totalItems]));
@@ -137,13 +141,14 @@ class ParseRssCommand extends Command
      */
     private function processAsync(array $sources, SymfonyStyle $io): int
     {
-        $io->info($this->translator->trans('command.parse_rss.messages.async_processing', ['%count%' => count($sources)]));
+        $io->info($this->translator->trans('command.parse_rss.messages.async_processing', ['%count%' => \count($sources)]));
 
         foreach ($sources as $source) {
             $this->messageBus->dispatch(new ParseRssMessage($source->getId()));
         }
 
         $io->success($this->translator->trans('command.parse_rss.messages.parsing_completed'));
+
         return Command::SUCCESS;
     }
 }

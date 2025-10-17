@@ -1,11 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
-use App\Entity\NewsSource;
-use App\Entity\NewsItem;
-use App\Repository\NewsSourceRepository;
 use App\Repository\NewsItemRepository;
+use App\Repository\NewsSourceRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -15,7 +15,7 @@ class AdminController extends AbstractController
     #[Route('/admin', name: 'admin_dashboard')]
     public function dashboard(
         NewsSourceRepository $newsSourceRepository,
-        NewsItemRepository $newsItemRepository
+        NewsItemRepository $newsItemRepository,
     ): Response {
         $sources = $newsSourceRepository->findAll();
         $newsCount = $newsItemRepository->count([]);
