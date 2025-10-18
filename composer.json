@@ -4,7 +4,7 @@
     "minimum-stability": "stable",
     "prefer-stable": true,
     "require": {
-        "php": ">=8.3",
+        "php": ">=8.4",
         "ext-ctype": "*",
         "ext-iconv": "*",
         "ext-simplexml": "*",
@@ -112,7 +112,7 @@
         }
     },
     "require-dev": {
-        "friendsofphp/php-cs-fixer": "^3.88.2",
+        "friendsofphp/php-cs-fixer": "^3.89.0",
         "overtrue/phplint": "^9.6.2",
         "rector/rector": "^2.2.3",
         "doctrine/doctrine-fixtures-bundle": "^4.2",
