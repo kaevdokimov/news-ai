@@ -48,6 +48,11 @@ jobs:
                   postgresql db: app
                   postgresql user: app
                   postgresql password: app-pwd
+            - name: Precheck
+              run: composer lint && \
+                composer php-cs-check && \
+                composer rector-check
+                #composer phpstan
             - name: Execute tests (Unit and Feature tests) via PHPUnit
               env:
                   DATABASE_URL: postgresql://app:app-pwd@database/app?serverVersion=18&charset=utf8
