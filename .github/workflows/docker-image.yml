@@ -1,22 +1,56 @@
 name: Docker Image CI
+
 permissions:
-  contents: read
+    contents: read
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    push:
+        branches: [ "main" ]
+    pull_request:
+        branches: [ "main" ]
 
 jobs:
+    build:
+        runs-on: ubuntu-latest
 
-  build:
+        strategy:
+            matrix:
+                include:
+                    - name: local
+                      dockerfile: .docker/app/DockerfileLocal
+                      tag: app-local
+                    - name: prod
+                      dockerfile: .docker/app/Dockerfile
+                      tag: app
 
-    runs-on: ubuntu-latest
+        name: Build Docker image (${{ matrix.name }})
 
-    steps:
-    - uses: actions/checkout@v5
-    - name: Build the local Docker image
-      run: docker build . --file .docker/app/DockerfileLocal --tag app-local:$(date +%s)
-    - name: Build the Docker image
-      run: docker build . --file .docker/app/Dockerfile --tag app:$(date +%s)
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v5
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Cache Docker layers
+              uses: actions/cache@v4
+              with:
+                  path: /tmp/.buildx-cache
+                  key: ${{ runner.os }}-buildx-${{ matrix.name }}-${{ github.sha }}
+                  restore-keys: |
+                      ${{ runner.os }}-buildx-${{ matrix.name }}-
+
+            - name: Build Docker image
+              uses: docker/build-push-action@v5
+              with:
+                  context: .
+                  file: ${{ matrix.dockerfile }}
+                  push: false
+                  tags: ${{ matrix.tag }}:${{ github.sha }}
+                  cache-from: type=local,src=/tmp/.buildx-cache
+                  cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+            - name: Move cache (optimize reuse)
+              run: |
+                  rm -rf /tmp/.buildx-cache
+                  mv /tmp/.buildx-cache-new /tmp/.buildx-cache
