@@ -27,7 +27,8 @@ class NewsItemRepository extends ServiceEntityRepository
             ->setParameter('guid', $guid)
             ->setParameter('source', $source)
             ->getQuery()
-            ->getOneOrNullResult();
+            ->getOneOrNullResult()
+        ;
     }
 
     /**
@@ -42,7 +43,8 @@ class NewsItemRepository extends ServiceEntityRepository
             ->orderBy('ni.publishedAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
-            ->getResult();
+            ->getResult()
+        ;
     }
 
     /**
@@ -56,7 +58,8 @@ class NewsItemRepository extends ServiceEntityRepository
             ->orderBy('ni.publishedAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
-            ->getResult();
+            ->getResult()
+        ;
     }
 
     public function save(NewsItem $entity, bool $flush = false): void

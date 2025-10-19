@@ -48,6 +48,7 @@ readonly class ParseRssCommand
     ): int {
         if ($sourceId) {
             $source = $this->newsSourceRepository->find($sourceId);
+
             if (!$source) {
                 $io->error($this->translator->trans('command.parse_rss.messages.source_not_found', ['%id%' => $sourceId]));
 
@@ -57,6 +58,7 @@ readonly class ParseRssCommand
         } else {
             $sources = $this->newsSourceRepository->findActiveSources();
         }
+
         if (empty($sources)) {
             $io->warning($this->translator->trans('command.parse_rss.messages.no_active_sources'));
 
@@ -64,6 +66,7 @@ readonly class ParseRssCommand
         }
         $io->title($this->translator->trans('command.parse_rss.messages.parsing_started'));
         $io->info($this->translator->trans('command.parse_rss.messages.found_sources', ['%count%' => \count($sources)]));
+
         if ($async) {
             return $this->processAsync($sources, $io);
         }

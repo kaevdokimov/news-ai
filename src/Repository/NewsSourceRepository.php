@@ -28,7 +28,8 @@ class NewsSourceRepository extends ServiceEntityRepository
             ->setParameter('active', true)
             ->orderBy('ns.name', 'ASC')
             ->getQuery()
-            ->getResult();
+            ->getResult()
+        ;
     }
 
     public function save(NewsSource $entity, bool $flush = false): void

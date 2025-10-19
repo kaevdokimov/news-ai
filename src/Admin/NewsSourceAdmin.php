@@ -47,7 +47,8 @@ class NewsSourceAdmin extends AbstractAdmin
                 'label' => 'Активен',
                 'required' => false,
                 'help' => 'Только активные источники будут парситься',
-            ]);
+            ])
+        ;
     }
 
     protected function configureDatagridFilters(DatagridMapper $filter): void
@@ -55,7 +56,8 @@ class NewsSourceAdmin extends AbstractAdmin
         $filter
             ->add('name', null, ['label' => 'Название'])
             ->add('isActive', null, ['label' => 'Активен'])
-            ->add('createdAt', null, ['label' => 'Дата создания']);
+            ->add('createdAt', null, ['label' => 'Дата создания'])
+        ;
     }
 
     protected function configureListFields(ListMapper $list): void
@@ -84,7 +86,8 @@ class NewsSourceAdmin extends AbstractAdmin
                         'template' => 'admin/news_source/action_parse.html.twig',
                     ],
                 ],
-            ]);
+            ])
+        ;
     }
 
     protected function configureShowFields(ShowMapper $show): void
@@ -105,11 +108,12 @@ class NewsSourceAdmin extends AbstractAdmin
             ->add('updatedAt', 'datetime', [
                 'label' => 'Обновлен',
                 'format' => 'd.m.Y H:i:s',
-            ]);
+            ])
+        ;
     }
 
     protected function configureRoutes(RouteCollectionInterface $collection): void
     {
-        $collection->add('parse', $this->getRouterIdParameter().'/parse');
+        $collection->add('parse', $this->getRouterIdParameter() . '/parse');
     }
 }

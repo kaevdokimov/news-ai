@@ -61,7 +61,8 @@ readonly class RssParserService
             }
 
             $xml = simplexml_load_string($content);
-            if (false === $xml) {
+
+            if ($xml === false) {
                 throw new \RuntimeException($this->translator->trans('rss_parser.xml_parse_error'));
             }
 
@@ -76,6 +77,7 @@ readonly class RssParserService
             foreach ($items as $item) {
                 try {
                     $newsItem = $this->parseRssItem($item, $source);
+
                     if ($newsItem) {
                         ++$itemsCount;
                     }
@@ -106,6 +108,7 @@ readonly class RssParserService
                 'url' => $source->getUrl(),
                 'error' => $e->getMessage(),
             ]);
+
             throw $e;
         }
     }
@@ -114,6 +117,7 @@ readonly class RssParserService
     {
         // Получаем GUID (уникальный идентификатор)
         $guid = $this->getItemValue($item, ['guid', 'id']);
+
         if (empty($guid)) {
             // Если нет GUID, используем ссылку
             $guid = $this->getItemValue($item, ['link', 'href']);
@@ -125,12 +129,14 @@ readonly class RssParserService
 
         // Проверяем, не существует ли уже такая новость
         $existingItem = $this->newsItemRepository->findByGuidAndSource($guid, $source);
+
         if ($existingItem) {
             return null; // Новость уже существует
         }
 
         // Получаем заголовок
         $title = $this->getItemValue($item, ['title']);
+
         if (empty($title)) {
             return null;
         }
@@ -188,8 +194,9 @@ readonly class RssParserService
     private function getItemValue(\SimpleXMLElement $item, array $fields): ?string
     {
         foreach ($fields as $field) {
-            if (isset($item->$field)) {
-                $value = (string) $item->$field;
+            if (isset($item->{$field})) {
+                $value = (string) $item->{$field};
+
                 if (!empty($value)) {
                     return trim($value);
                 }
@@ -200,6 +207,7 @@ readonly class RssParserService
         foreach ($fields as $field) {
             if (isset($item[$field])) {
                 $value = (string) $item[$field];
+
                 if (!empty($value)) {
                     return trim($value);
                 }
@@ -220,8 +228,9 @@ readonly class RssParserService
         ];
 
         foreach ($imageFields as $field => $attribute) {
-            if (isset($item->$field)) {
-                $url = (string) $item->$field[$attribute];
+            if (isset($item->{$field})) {
+                $url = (string) $item->{$field}[$attribute];
+
                 if (!empty($url)) {
                     return $url;
                 }
@@ -230,6 +239,7 @@ readonly class RssParserService
 
         // Ищем изображения в описании
         $description = $this->getItemValue($item, ['description', 'content:encoded', 'content']);
+
         if ($description && preg_match('/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i', $description, $matches)) {
             return $matches[1];
         }
@@ -242,8 +252,9 @@ readonly class RssParserService
         $dateFields = ['pubDate', 'published', 'updated', 'dc:date'];
 
         foreach ($dateFields as $field) {
-            if (isset($item->$field)) {
-                $dateString = (string) $item->$field;
+            if (isset($item->{$field})) {
+                $dateString = (string) $item->{$field};
+
                 if (!empty($dateString)) {
                     try {
                         return new \DateTime($dateString);

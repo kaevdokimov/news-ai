@@ -63,7 +63,8 @@ class NewsItemAdmin extends AbstractAdmin
                 'label' => 'Дата публикации',
                 'required' => true,
                 'widget' => 'single_text',
-            ]);
+            ])
+        ;
     }
 
     protected function configureDatagridFilters(DatagridMapper $filter): void
@@ -72,7 +73,8 @@ class NewsItemAdmin extends AbstractAdmin
             ->add('source', null, ['label' => 'Источник'])
             ->add('title', null, ['label' => 'Заголовок'])
             ->add('publishedAt', null, ['label' => 'Дата публикации'])
-            ->add('createdAt', null, ['label' => 'Дата создания']);
+            ->add('createdAt', null, ['label' => 'Дата создания'])
+        ;
     }
 
     protected function configureListFields(ListMapper $list): void
@@ -97,7 +99,8 @@ class NewsItemAdmin extends AbstractAdmin
                     'edit' => [],
                     'delete' => [],
                 ],
-            ]);
+            ])
+        ;
     }
 
     protected function configureShowFields(ShowMapper $show): void
@@ -127,6 +130,7 @@ class NewsItemAdmin extends AbstractAdmin
             ->add('updatedAt', 'datetime', [
                 'label' => 'Обновлена',
                 'format' => 'd.m.Y H:i:s',
-            ]);
+            ])
+        ;
     }
 }
