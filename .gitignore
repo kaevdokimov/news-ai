@@ -32,9 +32,6 @@ Thumbs.db
 *.sqlite
 *.db
 
-# Docker
-.docker/
-
 # Composer
 composer.phar
 
