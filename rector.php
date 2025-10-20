@@ -40,5 +40,5 @@ return RectorConfig::configure()
         jobSize: (int) ($_ENV['RECTOR_PARALLEL_JOB_SIZE'] ?? 8),
     )
     ->withCache(__DIR__ . '/var/rector_cache')
-    ->withSymfonyContainerXml(__DIR__ . '/var/cache/dev/App_KernelDevDebugContainer.xml')
+    //->withSymfonyContainerXml(__DIR__ . '/var/cache/dev/App_KernelDevDebugContainer.xml')
 ;
