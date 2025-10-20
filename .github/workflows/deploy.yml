@@ -32,14 +32,15 @@ jobs:
                   cache-to: type=inline
 
             - name: Install SSH key
-              uses: shimataro/ssh-key-action@v2
+              uses: webfactory/ssh-agent@v0.8.0
               with:
-                  key: ${{ secrets.SSH_PRIVATE_KEY }}
-                  known_hosts: unnecessary
-                  if_key_exists: replace
+                  ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
             - name: Adding Known Hosts
-              run: ssh-keyscan -p ${{ secrets.SSH_PORT }} -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+              run: |
+                  mkdir -p ~/.ssh
+                  ssh-keyscan -p ${{ secrets.SSH_PORT }} -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+                  chmod 600 ~/.ssh/known_hosts
 
             - name: Deploy to server
               env:
