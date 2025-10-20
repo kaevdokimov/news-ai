@@ -55,3 +55,4 @@ node_modules/
 ###> phpstan/phpstan ###
 phpstan.neon
 ###< phpstan/phpstan ###
+.github/copilot-instructions.md

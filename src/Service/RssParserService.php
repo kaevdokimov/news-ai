@@ -157,7 +157,7 @@ readonly class RssParserService
         $publishedAt = $this->getItemDate($item);
 
         $newsItem = new NewsItem();
-        $newsItem->setSource($newsSource);
+        $newsItem->setNewsSource($newsSource);
         $newsItem->setTitle($title);
         $newsItem->setDescription($description);
         $newsItem->setContent($content);

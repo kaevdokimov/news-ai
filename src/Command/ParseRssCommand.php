@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Enum\RoutingKeyEnum;
 use App\Message\ParseRssMessage;
 use App\Repository\NewsSourceRepository;
 use App\Service\RssParserService;
@@ -11,6 +12,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Messenger\Bridge\Amqp\Transport\AmqpStamp;
 use Symfony\Component\Messenger\Exception\ExceptionInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
@@ -135,7 +137,10 @@ readonly class ParseRssCommand
         $symfonyStyle->info($this->translator->trans('command.parse_rss.messages.async_processing', ['%count%' => \count($sources)]));
 
         foreach ($sources as $source) {
-            $this->messageBus->dispatch(new ParseRssMessage($source->id));
+            $this->messageBus->dispatch(
+                message: new ParseRssMessage($source->id),
+                stamps: [new AmqpStamp(RoutingKeyEnum::RssParse->value)]
+            );
         }
 
         $symfonyStyle->success($this->translator->trans('command.parse_rss.messages.parsing_completed'));
