@@ -31,16 +31,20 @@ jobs:
                   cache-from: type=registry,ref=${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:latest
                   cache-to: type=inline
 
-            - name: Install SSH key
-              uses: webfactory/ssh-agent@v0.8.0
-              with:
-                  ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-            - name: Adding Known Hosts
+            - name: Setup SSH
               run: |
                   mkdir -p ~/.ssh
-                  ssh-keyscan -p ${{ secrets.SSH_PORT }} -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+                  echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ecdsa
+                  chmod 600 ~/.ssh/id_ecdsa
+                  echo "IdentityFile ~/.ssh/id_ecdsa" > ~/.ssh/config
+                  echo "HostKeyAlgorithms +ssh-rsa" >> ~/.ssh/config
+                  echo "PubkeyAcceptedKeyTypes +ssh-rsa" >> ~/.ssh/config
+                  chmod 600 ~/.ssh/config
+                  ssh-keyscan -p ${{ secrets.SSH_PORT }} -t ecdsa-sha2-nistp521 -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
                   chmod 600 ~/.ssh/known_hosts
+
+            - name: Test SSH connection
+              run: ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "echo 'SSH connection successful'"
 
             - name: Deploy to server
               env:
