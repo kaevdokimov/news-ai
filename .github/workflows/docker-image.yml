@@ -5,9 +5,9 @@ permissions:
 
 on:
     push:
-        branches: [ "main" ]
+        branches: ["main"]
     pull_request:
-        branches: [ "main" ]
+        branches: ["main"]
 
 jobs:
     build:
@@ -17,10 +17,10 @@ jobs:
             matrix:
                 include:
                     - name: local
-                      dockerfile: .docker/app/DockerfileLocal
+                      dockerfile: .docker/app/Dockerfile
                       tag: app-local
                     - name: prod
-                      dockerfile: .docker/app/Dockerfile
+                      dockerfile: .docker/app/DockerfileProduction
                       tag: app
 
         name: Build Docker image (${{ matrix.name }})

@@ -20,7 +20,7 @@ services:
     restart: unless-stopped
     build:
       context: .
-      dockerfile: .docker/app/DockerfileLocal
+      dockerfile: .docker/app/Dockerfile
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1001}
