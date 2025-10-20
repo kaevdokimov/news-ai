@@ -21,7 +21,7 @@ class NewsItemAdmin extends AbstractAdmin
     public function toString(object $object): string
     {
         return $object instanceof NewsItem && $object->getTitle()
-            ? (string) $object->getTitle()
+            ? $object->getTitle()
             : 'Новая новость';
     }
 

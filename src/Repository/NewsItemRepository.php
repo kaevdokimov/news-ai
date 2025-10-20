@@ -19,13 +19,13 @@ class NewsItemRepository extends ServiceEntityRepository
         parent::__construct($registry, NewsItem::class);
     }
 
-    public function findByGuidAndSource(string $guid, NewsSource $source): ?NewsItem
+    public function findByGuidAndSource(string $guid, NewsSource $newsSource): ?NewsItem
     {
         return $this->createQueryBuilder('ni')
             ->where('ni.guid = :guid')
             ->andWhere('ni.source = :source')
             ->setParameter('guid', $guid)
-            ->setParameter('source', $source)
+            ->setParameter('source', $newsSource)
             ->getQuery()
             ->getOneOrNullResult()
         ;
@@ -50,11 +50,11 @@ class NewsItemRepository extends ServiceEntityRepository
     /**
      * @return NewsItem[]
      */
-    public function findBySource(NewsSource $source, int $limit = 50): array
+    public function findBySource(NewsSource $newsSource, int $limit = 50): array
     {
         return $this->createQueryBuilder('ni')
             ->where('ni.source = :source')
-            ->setParameter('source', $source)
+            ->setParameter('source', $newsSource)
             ->orderBy('ni.publishedAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
@@ -62,18 +62,18 @@ class NewsItemRepository extends ServiceEntityRepository
         ;
     }
 
-    public function save(NewsItem $entity, bool $flush = false): void
+    public function save(NewsItem $newsItem, bool $flush = false): void
     {
-        $this->getEntityManager()->persist($entity);
+        $this->getEntityManager()->persist($newsItem);
 
         if ($flush) {
             $this->getEntityManager()->flush();
         }
     }
 
-    public function remove(NewsItem $entity, bool $flush = false): void
+    public function remove(NewsItem $newsItem, bool $flush = false): void
     {
-        $this->getEntityManager()->remove($entity);
+        $this->getEntityManager()->remove($newsItem);
 
         if ($flush) {
             $this->getEntityManager()->flush();

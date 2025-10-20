@@ -31,15 +31,15 @@ readonly class ParseRssMessageHandler
      * @throws RedirectionExceptionInterface
      * @throws ClientExceptionInterface
      */
-    public function __invoke(ParseRssMessage $message): void
+    public function __invoke(ParseRssMessage $parseRssMessage): void
     {
-        $source = $this->newsSourceRepository->find($message->getSourceId());
+        $source = $this->newsSourceRepository->find($parseRssMessage->getSourceId());
 
-        if (!$source) {
+        if ($source === null) {
             $this->logger->error($this->translator->trans('rss_parser.source_not_found', [
-                '%id%' => $message->getSourceId(),
+                '%id%' => $parseRssMessage->getSourceId(),
             ]), [
-                'source_id' => $message->getSourceId(),
+                'source_id' => $parseRssMessage->getSourceId(),
             ]);
 
             return;
@@ -64,12 +64,12 @@ readonly class ParseRssMessageHandler
                 'source_name' => $source->getName(),
                 'items_count' => $itemsCount,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Exception $exception) {
             $this->logger->error($this->translator->trans('rss_parser.parsing_failed'), [
                 'source_id' => $source->id,
                 'source_name' => $source->getName(),
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'error' => $exception->getMessage(),
+                'trace' => $exception->getTraceAsString(),
             ]);
         }
     }

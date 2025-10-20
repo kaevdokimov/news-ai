@@ -32,18 +32,18 @@ class NewsSourceRepository extends ServiceEntityRepository
         ;
     }
 
-    public function save(NewsSource $entity, bool $flush = false): void
+    public function save(NewsSource $newsSource, bool $flush = false): void
     {
-        $this->getEntityManager()->persist($entity);
+        $this->getEntityManager()->persist($newsSource);
 
         if ($flush) {
             $this->getEntityManager()->flush();
         }
     }
 
-    public function remove(NewsSource $entity, bool $flush = false): void
+    public function remove(NewsSource $newsSource, bool $flush = false): void
     {
-        $this->getEntityManager()->remove($entity);
+        $this->getEntityManager()->remove($newsSource);
 
         if ($flush) {
             $this->getEntityManager()->flush();

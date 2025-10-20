@@ -22,7 +22,7 @@ class NewsSourceAdmin extends AbstractAdmin
     public function toString(object $object): string
     {
         return $object instanceof NewsSource && $object->getName()
-            ? (string) $object->getName()
+            ? $object->getName()
             : 'Новый источник';
     }
 

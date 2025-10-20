@@ -62,7 +62,7 @@ class NewsItem implements \Stringable
 
     #[ORM\ManyToOne(targetEntity: NewsSource::class, inversedBy: 'newsItems')]
     #[ORM\JoinColumn(nullable: false)]
-    private ?NewsSource $source = null;
+    private ?NewsSource $newsSource = null;
 
     public function __construct()
     {
@@ -179,12 +179,12 @@ class NewsItem implements \Stringable
 
     public function getSource(): ?NewsSource
     {
-        return $this->source;
+        return $this->newsSource;
     }
 
-    public function setSource(?NewsSource $source): static
+    public function setSource(?NewsSource $newsSource): static
     {
-        $this->source = $source;
+        $this->newsSource = $newsSource;
 
         return $this;
     }

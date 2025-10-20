@@ -40,7 +40,7 @@ readonly class ParseRssCommand
      * @throws ExceptionInterface
      */
     public function __invoke(
-        SymfonyStyle $io,
+        SymfonyStyle $symfonyStyle,
         #[Option(description: 'ID источника для парсинга', name: 'source-id')]
         ?int $sourceId = null,
         #[Option(description: 'Обрабатывать источники асинхронно с использованием очереди сообщений', name: 'async')]
@@ -49,29 +49,31 @@ readonly class ParseRssCommand
         if ($sourceId) {
             $source = $this->newsSourceRepository->find($sourceId);
 
-            if (!$source) {
-                $io->error($this->translator->trans('command.parse_rss.messages.source_not_found', ['%id%' => $sourceId]));
+            if ($source === null) {
+                $symfonyStyle->error($this->translator->trans('command.parse_rss.messages.source_not_found', ['%id%' => $sourceId]));
 
                 return Command::FAILURE;
             }
+
             $sources = [$source];
         } else {
             $sources = $this->newsSourceRepository->findActiveSources();
         }
 
         if (empty($sources)) {
-            $io->warning($this->translator->trans('command.parse_rss.messages.no_active_sources'));
+            $symfonyStyle->warning($this->translator->trans('command.parse_rss.messages.no_active_sources'));
 
             return Command::SUCCESS;
         }
-        $io->title($this->translator->trans('command.parse_rss.messages.parsing_started'));
-        $io->info($this->translator->trans('command.parse_rss.messages.found_sources', ['%count%' => \count($sources)]));
+
+        $symfonyStyle->title($this->translator->trans('command.parse_rss.messages.parsing_started'));
+        $symfonyStyle->info($this->translator->trans('command.parse_rss.messages.found_sources', ['%count%' => \count($sources)]));
 
         if ($async) {
-            return $this->processAsync($sources, $io);
+            return $this->processAsync($sources, $symfonyStyle);
         }
 
-        return $this->processSync($sources, $io);
+        return $this->processSync($sources, $symfonyStyle);
     }
 
     /**
@@ -80,13 +82,13 @@ readonly class ParseRssCommand
      * @throws RedirectionExceptionInterface
      * @throws ClientExceptionInterface
      */
-    private function processSync(array $sources, SymfonyStyle $io): int
+    private function processSync(array $sources, SymfonyStyle $symfonyStyle): int
     {
         $totalItems = 0;
         $successCount = 0;
         $errorCount = 0;
 
-        $progressBar = $io->createProgressBar(\count($sources));
+        $progressBar = $symfonyStyle->createProgressBar(\count($sources));
         $progressBar->start();
 
         foreach ($sources as $source) {
@@ -95,15 +97,15 @@ readonly class ParseRssCommand
                 $totalItems += $itemsCount;
                 ++$successCount;
 
-                $io->newLine();
-                $io->success($this->translator->trans('command.parse_rss.messages.source_success', [
+                $symfonyStyle->newLine();
+                $symfonyStyle->success($this->translator->trans('command.parse_rss.messages.source_success', [
                     '%name%' => $source->getName(),
                     '%count%' => $itemsCount,
                 ]));
             } catch (\Exception $e) {
                 ++$errorCount;
-                $io->newLine();
-                $io->error($this->translator->trans('command.parse_rss.messages.source_error', [
+                $symfonyStyle->newLine();
+                $symfonyStyle->error($this->translator->trans('command.parse_rss.messages.source_error', [
                     '%name%' => $source->getName(),
                     '%error%' => $e->getMessage(),
                 ]));
@@ -113,14 +115,14 @@ readonly class ParseRssCommand
         }
 
         $progressBar->finish();
-        $io->newLine(2);
+        $symfonyStyle->newLine(2);
 
-        $io->success($this->translator->trans('command.parse_rss.messages.processing_complete', [
+        $symfonyStyle->success($this->translator->trans('command.parse_rss.messages.processing_complete', [
             '%success%' => $successCount,
             '%errors%' => $errorCount,
         ]));
 
-        $io->info($this->translator->trans('command.parse_rss.messages.items_processed', ['%total%' => $totalItems]));
+        $symfonyStyle->info($this->translator->trans('command.parse_rss.messages.items_processed', ['%total%' => $totalItems]));
 
         return Command::SUCCESS;
     }
@@ -128,15 +130,15 @@ readonly class ParseRssCommand
     /**
      * @throws ExceptionInterface
      */
-    private function processAsync(array $sources, SymfonyStyle $io): int
+    private function processAsync(array $sources, SymfonyStyle $symfonyStyle): int
     {
-        $io->info($this->translator->trans('command.parse_rss.messages.async_processing', ['%count%' => \count($sources)]));
+        $symfonyStyle->info($this->translator->trans('command.parse_rss.messages.async_processing', ['%count%' => \count($sources)]));
 
         foreach ($sources as $source) {
             $this->messageBus->dispatch(new ParseRssMessage($source->id));
         }
 
-        $io->success($this->translator->trans('command.parse_rss.messages.parsing_completed'));
+        $symfonyStyle->success($this->translator->trans('command.parse_rss.messages.parsing_completed'));
 
         return Command::SUCCESS;
     }

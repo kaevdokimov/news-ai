@@ -43,17 +43,17 @@ readonly class RssParserService
      * @throws ClientExceptionInterface
      * @throws \Exception
      */
-    public function parseRssFeed(NewsSource $source): int
+    public function parseRssFeed(NewsSource $newsSource): int
     {
         $this->logger->info($this->translator->trans('rss_parser.starting', [
-            '%name%' => $source->getName(),
+            '%name%' => $newsSource->getName(),
         ]), [
-            'source_id' => $source->id,
-            'url' => $source->getUrl(),
+            'source_id' => $newsSource->id,
+            'url' => $newsSource->getUrl(),
         ]);
 
         try {
-            $response = $this->httpClient->request('GET', $source->getUrl());
+            $response = $this->httpClient->request('GET', $newsSource->getUrl());
             $content = $response->getContent();
 
             if (empty($content)) {
@@ -76,25 +76,25 @@ readonly class RssParserService
 
             foreach ($items as $item) {
                 try {
-                    $newsItem = $this->parseRssItem($item, $source);
+                    $newsItem = $this->parseRssItem($item, $newsSource);
 
-                    if ($newsItem) {
+                    if ($newsItem instanceof NewsItem) {
                         ++$itemsCount;
                     }
                 } catch (\Exception $e) {
                     $this->logger->warning($this->translator->trans('rss_parser.item_parse_error'), [
-                        'source_id' => $source->id,
+                        'source_id' => $newsSource->id,
                         'error' => $e->getMessage(),
                     ]);
                 }
             }
 
             // Обновляем время последнего парсинга
-            $source->setLastParsedAt(new \DateTime());
+            $newsSource->setLastParsedAt(new \DateTime());
             $this->entityManager->flush();
 
             $this->logger->info($this->translator->trans('rss_parser.parsing_completed'), [
-                'source_id' => $source->id,
+                'source_id' => $newsSource->id,
                 'items_processed' => $itemsCount,
                 'message' => $this->translator->trans('rss_parser.items_processed', [
                     '%count%' => $itemsCount,
@@ -102,18 +102,18 @@ readonly class RssParserService
             ]);
 
             return $itemsCount;
-        } catch (\Exception $e) {
+        } catch (\Exception $exception) {
             $this->logger->error($this->translator->trans('rss_parser.parsing_failed'), [
-                'source_id' => $source->id,
-                'url' => $source->getUrl(),
-                'error' => $e->getMessage(),
+                'source_id' => $newsSource->id,
+                'url' => $newsSource->getUrl(),
+                'error' => $exception->getMessage(),
             ]);
 
-            throw $e;
+            throw $exception;
         }
     }
 
-    private function parseRssItem(\SimpleXMLElement $item, NewsSource $source): ?NewsItem
+    private function parseRssItem(\SimpleXMLElement $item, NewsSource $newsSource): ?NewsItem
     {
         // Получаем GUID (уникальный идентификатор)
         $guid = $this->getItemValue($item, ['guid', 'id']);
@@ -128,9 +128,9 @@ readonly class RssParserService
         }
 
         // Проверяем, не существует ли уже такая новость
-        $existingItem = $this->newsItemRepository->findByGuidAndSource($guid, $source);
+        $existingItem = $this->newsItemRepository->findByGuidAndSource($guid, $newsSource);
 
-        if ($existingItem) {
+        if ($existingItem instanceof NewsItem) {
             return null; // Новость уже существует
         }
 
@@ -157,7 +157,7 @@ readonly class RssParserService
         $publishedAt = $this->getItemDate($item);
 
         $newsItem = new NewsItem();
-        $newsItem->setSource($source);
+        $newsItem->setSource($newsSource);
         $newsItem->setTitle($title);
         $newsItem->setDescription($description);
         $newsItem->setContent($content);
@@ -175,15 +175,15 @@ readonly class RssParserService
             // Игнорируем ошибку дубликата
             $this->logger->info($this->translator->trans('rss_parser.missing_duplicate_news'), [
                 'guid' => $guid,
-                'source_id' => $source->id,
-                'source_name' => $source->getName(),
+                'source_id' => $newsSource->id,
+                'source_name' => $newsSource->getName(),
             ]);
 
             return null;
         } catch (\Exception $e) {
             $this->logger->error($this->translator->trans('rss_parser.error_saving_news'), [
                 'guid' => $guid,
-                'source_id' => $source->id,
+                'source_id' => $newsSource->id,
                 'error' => $e->getMessage(),
             ]);
 
@@ -251,9 +251,9 @@ readonly class RssParserService
     {
         $dateFields = ['pubDate', 'published', 'updated', 'dc:date'];
 
-        foreach ($dateFields as $field) {
-            if (isset($item->{$field})) {
-                $dateString = (string) $item->{$field};
+        foreach ($dateFields as $dateField) {
+            if (isset($item->{$dateField})) {
+                $dateString = (string) $item->{$dateField};
 
                 if (!empty($dateString)) {
                     try {
