@@ -53,7 +53,7 @@ class NewsSource implements \Stringable
     /**
      * @var Collection<int, NewsItem>
      */
-    #[ORM\OneToMany(targetEntity: NewsItem::class, mappedBy: 'source', cascade: ['persist', 'remove'])]
+    #[ORM\OneToMany(targetEntity: NewsItem::class, mappedBy: 'newsSource', cascade: ['persist', 'remove'])]
     private Collection $newsItems {
         get {
             return $this->newsItems;
@@ -154,7 +154,7 @@ class NewsSource implements \Stringable
     {
         if (!$this->newsItems->contains($newsItem)) {
             $this->newsItems->add($newsItem);
-            $newsItem->setSource($this);
+            $newsItem->setNewsSource($this);
         }
 
         return $this;
@@ -165,7 +165,7 @@ class NewsSource implements \Stringable
         if ($this->newsItems->removeElement($newsItem)) {
             // set the owning side to null (unless already changed)
             if ($newsItem->getSource() === $this) {
-                $newsItem->setSource(null);
+                $newsItem->setNewsSource(null);
             }
         }
 

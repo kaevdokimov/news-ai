@@ -23,9 +23,9 @@ class NewsItemRepository extends ServiceEntityRepository
     {
         return $this->createQueryBuilder('ni')
             ->where('ni.guid = :guid')
-            ->andWhere('ni.source = :source')
+            ->andWhere('ni.newsSource = :newsSource')
             ->setParameter('guid', $guid)
-            ->setParameter('source', $newsSource)
+            ->setParameter('newsSource', $newsSource)
             ->getQuery()
             ->getOneOrNullResult()
         ;
@@ -37,7 +37,7 @@ class NewsItemRepository extends ServiceEntityRepository
     public function findLatestNews(int $limit = 50): array
     {
         return $this->createQueryBuilder('ni')
-            ->join('ni.source', 'ns')
+            ->join('ni.newsSource', 'ns')
             ->where('ns.isActive = :active')
             ->setParameter('active', true)
             ->orderBy('ni.publishedAt', 'DESC')
@@ -53,8 +53,8 @@ class NewsItemRepository extends ServiceEntityRepository
     public function findBySource(NewsSource $newsSource, int $limit = 50): array
     {
         return $this->createQueryBuilder('ni')
-            ->where('ni.source = :source')
-            ->setParameter('source', $newsSource)
+            ->andWhere('ni.newsSource = :newsSource')
+            ->setParameter('newsSource', $newsSource)
             ->orderBy('ni.publishedAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
