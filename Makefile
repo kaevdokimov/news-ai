@@ -206,6 +206,13 @@ rector:
 	docker compose run --rm news_ai_app composer rector
 	@echo "${GREEN}Код исправлен, авторефакторинг завершен${NC}"
 
+precheck:
+	@echo "${BLUE}Проверка кода на наличие ошибок...${NC}"
+	docker compose run --rm news_ai_app composer lint
+	docker compose run --rm news_ai_app composer php-cs-check
+	docker compose run --rm news_ai_app composer rector-check
+	@echo "${GREEN}Проверка кода завершена${NC}"
+
 ############################
 # Команды для запуска парсинга
 ############################
