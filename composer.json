@@ -116,7 +116,7 @@
         "friendsofphp/php-cs-fixer": "^3.89.0",
         "overtrue/phplint": "^9.6.2",
         "phpunit/phpunit": "^12.4.1",
-        "rector/rector": "^2.2",
+        "rector/rector": "^2.2.3",
         "roave/security-advisories": "dev-latest",
         "symfony/browser-kit": "7.3.*",
         "symfony/debug-bundle": "7.3.*",
