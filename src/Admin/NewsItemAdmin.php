@@ -28,7 +28,7 @@ class NewsItemAdmin extends AbstractAdmin
     protected function configureFormFields(FormMapper $form): void
     {
         $form
-            ->add('source', null, [
+            ->add('newsSource', null, [
                 'label' => 'Источник',
                 'required' => true,
             ])
@@ -70,7 +70,7 @@ class NewsItemAdmin extends AbstractAdmin
     protected function configureDatagridFilters(DatagridMapper $filter): void
     {
         $filter
-            ->add('source', null, ['label' => 'Источник'])
+            ->add('newsSource', null, ['label' => 'Источник'])
             ->add('title', null, ['label' => 'Заголовок'])
             ->add('publishedAt', null, ['label' => 'Дата публикации'])
             ->add('createdAt', null, ['label' => 'Дата создания'])
@@ -84,7 +84,7 @@ class NewsItemAdmin extends AbstractAdmin
                 'label' => 'Заголовок',
                 'template' => 'admin/news_item/list_title.html.twig',
             ])
-            ->add('source', null, ['label' => 'Источник'])
+            ->add('newsSource', null, ['label' => 'Источник'])
             ->add('publishedAt', 'datetime', [
                 'label' => 'Дата публикации',
                 'format' => 'd.m.Y H:i',
@@ -106,7 +106,7 @@ class NewsItemAdmin extends AbstractAdmin
     protected function configureShowFields(ShowMapper $show): void
     {
         $show
-            ->add('source', null, ['label' => 'Источник'])
+            ->add('newsSource', null, ['label' => 'Источник'])
             ->add('title', null, ['label' => 'Заголовок'])
             ->add('description', null, [
                 'label' => 'Описание',
