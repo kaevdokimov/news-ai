@@ -39,22 +39,25 @@ jobs:
             - name: Setup SSH
               run: |
                   mkdir -p ~/.ssh
-                  # Save key with proper new lines and format
-                  echo "${{ secrets.SSH_PRIVATE_KEY }}" | sed 's/\\n/\n/g' > ~/.ssh/id_ecdsa
+                  # Ensure proper key formatting with base64 decode
+                  echo "${{ secrets.SSH_PRIVATE_KEY }}" | base64 -d > ~/.ssh/id_ecdsa
                   chmod 600 ~/.ssh/id_ecdsa
-                  # Configure SSH client
+
+                  # Configure SSH client with specific key type
                   echo "Host *" > ~/.ssh/config
                   echo "  StrictHostKeyChecking no" >> ~/.ssh/config
                   echo "  UserKnownHostsFile=/dev/null" >> ~/.ssh/config
                   echo "  IdentityFile ~/.ssh/id_ecdsa" >> ~/.ssh/config
+                  echo "  PubkeyAcceptedKeyTypes ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521" >> ~/.ssh/config
                   chmod 600 ~/.ssh/config
+
                   # Debug information
                   echo "SSH client version:"
                   ssh -V
-                  echo "Key file permissions:"
+                  echo "Key file permissions and type:"
                   ls -la ~/.ssh/id_ecdsa
-                  echo "Key file content format:"
-                  head -n1 ~/.ssh/id_ecdsa
+                  echo "Testing key format:"
+                  ssh-keygen -l -f ~/.ssh/id_ecdsa || echo "Invalid key format"
 
             - name: Test SSH connection and deploy to server
               env:
