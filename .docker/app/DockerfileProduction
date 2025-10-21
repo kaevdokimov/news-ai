@@ -8,7 +8,8 @@ ENV APP_DIR=${APP_DIR} \
     APP_ENV=prod \
     APP_DEBUG=0
 
-# Create app directory
+# Create app directory as root
+USER root
 RUN mkdir -p ${APP_DIR} && chown www-data:www-data ${APP_DIR}
 
 # Copy only necessary files
@@ -18,12 +19,15 @@ COPY --chown=www-data:www-data \
     symfony.lock \
     ${APP_DIR}/
 
-# Install Composer
-COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
+# Install Composer and system dependencies
+RUN apt-get update && apt-get install -y git unzip \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 # Install production dependencies
 WORKDIR ${APP_DIR}
-RUN composer install --prefer-dist --no-dev --no-scripts --no-progress --optimize-autoloader --no-interaction
+RUN composer install --prefer-dist --no-dev --no-scripts --no-progress --optimize-autoloader --no-interaction \
+    && chown -R www-data:www-data ${APP_DIR}/vendor
 
 # Copy remaining application files
 COPY --chown=www-data:www-data \
@@ -35,12 +39,16 @@ COPY --chown=www-data:www-data \
     templates/ \
     ${APP_DIR}/
 
-# Copy PHP configuration
+# Copy PHP configuration and command script
 COPY .docker/app/php/fpm/php.ini /usr/local/etc/php/php.ini
+COPY --chown=www-data:www-data .docker/app/cmd.sh ${APP_DIR}/.docker/app/cmd.sh
 
 # Set working directory and permissions
 WORKDIR ${APP_DIR}
-RUN chmod +x ${APP_DIR}/.docker/app/cmd.sh
+RUN chmod +x ${APP_DIR}/.docker/app/cmd.sh && \
+    # Ensure cache and logs directories are writable
+    mkdir -p var/cache var/log && \
+    chown -R www-data:www-data var
 
 # Switch to non-root user
 USER www-data
