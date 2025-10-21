@@ -73,7 +73,15 @@ jobs:
                   RABBITMQ_USER=${{ secrets.RABBITMQ_USER }}
                   RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}
                   COMPOSE_PROJECT_NAME=${{ vars.COMPOSE_PROJECT_NAME }}
+                  DOCKER_REGISTRY=${{ vars.DOCKER_REGISTRY }}
+                  DOCKER_USERNAME=${{ vars.DOCKER_USERNAME }}
+                  DOCKER_IMAGE=${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:${{ github.sha }}
                   EOF
-
-                  docker compose pull && \
+                  
+                  # Pull the pre-built image
+                  echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ vars.DOCKER_USERNAME }} --password-stdin ${{ vars.DOCKER_REGISTRY }}
+                  docker pull $DOCKER_IMAGE
+                  
+                  # Update services
+                  docker compose pull
                   docker compose up -d --wait"
