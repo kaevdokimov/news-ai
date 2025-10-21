@@ -49,7 +49,7 @@ COPY --chown=www-data:www-data .docker/app/cmd.sh ${APP_DIR}/.docker/app/cmd.sh
 WORKDIR ${APP_DIR}
 RUN chmod +x ${APP_DIR}/.docker/app/cmd.sh && \
     # Ensure cache and logs directories are writable
-    mkdir -p var/cache var/log && \
+    mkdir -p var/cache var/log var/cache/prod && \
     chown -R www-data:www-data var
 
 # Switch to non-root user
