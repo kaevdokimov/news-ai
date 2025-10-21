@@ -27,45 +27,20 @@ jobs:
                   context: .
                   push: true
                   file: .docker/app/DockerfileProduction
-                  tags: ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:latest
+                  tags: |
+                      ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:latest
+                      ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:${{ github.sha }}
                   cache-from: type=registry,ref=${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:latest
                   cache-to: type=inline
-
-            - name: Install OpenSSH
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install -y openssh-client
 
             - name: Setup SSH
               run: |
                   mkdir -p ~/.ssh
-                  # Save key directly and clean up any potential issues
                   echo "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ecdsa
                   chmod 600 ~/.ssh/id_ecdsa
+                  ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-                  # Configure SSH client
-                  echo "Host *" > ~/.ssh/config
-                  echo "  StrictHostKeyChecking no" >> ~/.ssh/config
-                  echo "  UserKnownHostsFile=/dev/null" >> ~/.ssh/config
-                  echo "  IdentityFile ~/.ssh/id_ecdsa" >> ~/.ssh/config
-                  chmod 600 ~/.ssh/config
-
-                  # Extended debug information
-                  echo "SSH client version:"
-                  ssh -V
-                  echo "OpenSSL version:"
-                  openssl version
-                  echo "Key file permissions:"
-                  ls -la ~/.ssh/id_ecdsa
-                  echo "Key file first line:"
-                  head -n1 ~/.ssh/id_ecdsa | grep -v "KEY" || true
-                  echo "Key file structure:"
-                  grep -c "BEGIN .* PRIVATE KEY" ~/.ssh/id_ecdsa || true
-                  grep -c "END .* PRIVATE KEY" ~/.ssh/id_ecdsa || true
-                  echo "Attempting key validation:"
-                  ssh-keygen -y -f ~/.ssh/id_ecdsa > /dev/null 2>&1 || echo "Invalid key format detected"
-
-            - name: Test SSH connection and deploy to server
+            - name: Deploy to server
               env:
                   COMPOSE_PROJECT_NAME: ${{ vars.COMPOSE_PROJECT_NAME }}
                   APP_ENV: ${{ secrets.APP_ENV }}
@@ -77,26 +52,28 @@ jobs:
                   RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
                   DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
               run: |
-                  echo "Testing SSH connection with verbose output..."
-                  ssh -vvv -o "BatchMode=yes" -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "echo 'SSH connection successful'"
+                  # Test connection
+                  ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "echo 'SSH connection successful'"
 
-                  # Clean up deployment directory
-                  ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "rm -rf ${{ secrets.DEPLOY_PATH }}/*"
+                  # Create deployment directory
+                  ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "mkdir -p ${{ secrets.DEPLOY_PATH }}"
 
-                  # Proceed with deployment
+                  # Copy files
                   scp -r -P ${{ secrets.SSH_PORT }} .docker ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/
                   scp -P ${{ secrets.SSH_PORT }} compose-production.yaml ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/compose.yaml
 
+                  # Deploy application
                   ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.DEPLOY_PATH }} && \
-                    echo 'APP_ENV=${{ secrets.APP_ENV }}' > .env && \
-                    echo 'APP_SECRET=${{ secrets.APP_SECRET }}' >> .env && \
-                    echo 'POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}' >> .env && \
-                    echo 'RABBITMQ_DEFAULT_PASS=${{ secrets.RABBITMQ_DEFAULT_PASS }}' >> .env && \
-                    echo 'RABBITMQ_SERVER_VERSION=${{ vars.RABBITMQ_SERVER_VERSION }}' >> .env && \
-                    echo 'RABBITMQ_USER=${{ secrets.RABBITMQ_USER }}' >> .env && \
-                    echo 'RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}' >> .env && \
-                    echo 'COMPOSE_PROJECT_NAME=${{ vars.COMPOSE_PROJECT_NAME }}' >> .env && \
-                    docker compose pull && \
-                    docker compose up -d && \
-                    docker compose exec -T app php bin/console doctrine:migrations:migrate --no-interaction && \
-                    docker compose exec -T app php bin/console cache:clear"
+                    cat > .env << EOF
+                  APP_ENV=${{ secrets.APP_ENV }}
+                  APP_SECRET=${{ secrets.APP_SECRET }}
+                  POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+                  RABBITMQ_DEFAULT_PASS=${{ secrets.RABBITMQ_DEFAULT_PASS }}
+                  RABBITMQ_SERVER_VERSION=${{ vars.RABBITMQ_SERVER_VERSION }}
+                  RABBITMQ_USER=${{ secrets.RABBITMQ_USER }}
+                  RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}
+                  COMPOSE_PROJECT_NAME=${{ vars.COMPOSE_PROJECT_NAME }}
+                  EOF
+
+                  docker compose pull && \
+                  docker compose up -d --wait"
