@@ -19,10 +19,11 @@ COPY --chown=www-data:www-data \
     symfony.lock \
     ${APP_DIR}/
 
-# Install Composer and system dependencies
-RUN apt-get update && apt-get install -y git unzip \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+# Install Composer and system dependencies (Alpine Linux)
+USER root
+RUN apk add --no-cache git unzip curl \
+    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
+    && chmod +x /usr/local/bin/composer
 
 # Install production dependencies
 WORKDIR ${APP_DIR}
