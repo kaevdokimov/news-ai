@@ -31,14 +31,12 @@ RUN composer install --prefer-dist --no-dev --no-scripts --no-progress --optimiz
     && chown -R www-data:www-data ${APP_DIR}/vendor
 
 # Copy remaining application files
-COPY --chown=www-data:www-data \
-    bin/ \
-    config/ \
-    migrations/ \
-    public/ \
-    src/ \
-    templates/ \
-    ${APP_DIR}/
+COPY --chown=www-data:www-data bin/ ${APP_DIR}/bin/
+COPY --chown=www-data:www-data config/ ${APP_DIR}/config/
+COPY --chown=www-data:www-data migrations/ ${APP_DIR}/migrations/
+COPY --chown=www-data:www-data public/ ${APP_DIR}/public/
+COPY --chown=www-data:www-data src/ ${APP_DIR}/src/
+COPY --chown=www-data:www-data templates/ ${APP_DIR}/templates/
 
 # Copy PHP configuration and command script
 COPY .docker/app/php/fpm/php.ini /usr/local/etc/php/php.ini
