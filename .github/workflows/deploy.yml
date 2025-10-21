@@ -88,6 +88,9 @@ jobs:
                     echo 'APP_SECRET=${{ secrets.APP_SECRET }}' >> .env.local && \
                     echo 'POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}' >> .env.local && \
                     echo 'RABBITMQ_DEFAULT_PASS=${{ secrets.RABBITMQ_DEFAULT_PASS }}' >> .env.local && \
+                    echo 'RABBITMQ_SERVER_VERSION=${{ vars.RABBITMQ_SERVER_VERSION }}' >> .env.local && \
+                    echo 'RABBITMQ_USER=${{ secrets.RABBITMQ_USER }}' >> .env.local && \
+                    echo 'RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}' >> .env.local && \
                     echo 'COMPOSE_PROJECT_NAME=${{ vars.COMPOSE_PROJECT_NAME }}' >> .env.local && \
                     docker compose pull && \
                     docker compose up -d && \
