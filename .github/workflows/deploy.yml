@@ -84,14 +84,14 @@ jobs:
                   scp -P ${{ secrets.SSH_PORT }} compose-production.yaml ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/
 
                   ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.DEPLOY_PATH }} && \
-                    echo 'APP_ENV=${{ secrets.APP_ENV }}' > .env.local && \
-                    echo 'APP_SECRET=${{ secrets.APP_SECRET }}' >> .env.local && \
-                    echo 'POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}' >> .env.local && \
-                    echo 'RABBITMQ_DEFAULT_PASS=${{ secrets.RABBITMQ_DEFAULT_PASS }}' >> .env.local && \
-                    echo 'RABBITMQ_SERVER_VERSION=${{ vars.RABBITMQ_SERVER_VERSION }}' >> .env.local && \
-                    echo 'RABBITMQ_USER=${{ secrets.RABBITMQ_USER }}' >> .env.local && \
-                    echo 'RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}' >> .env.local && \
-                    echo 'COMPOSE_PROJECT_NAME=${{ vars.COMPOSE_PROJECT_NAME }}' >> .env.local && \
+                    echo 'APP_ENV=${{ secrets.APP_ENV }}' > .env && \
+                    echo 'APP_SECRET=${{ secrets.APP_SECRET }}' >> .env && \
+                    echo 'POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}' >> .env && \
+                    echo 'RABBITMQ_DEFAULT_PASS=${{ secrets.RABBITMQ_DEFAULT_PASS }}' >> .env && \
+                    echo 'RABBITMQ_SERVER_VERSION=${{ vars.RABBITMQ_SERVER_VERSION }}' >> .env && \
+                    echo 'RABBITMQ_USER=${{ secrets.RABBITMQ_USER }}' >> .env && \
+                    echo 'RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}' >> .env && \
+                    echo 'COMPOSE_PROJECT_NAME=${{ vars.COMPOSE_PROJECT_NAME }}' >> .env && \
                     docker compose pull && \
                     docker compose up -d && \
                     docker compose exec -T app php bin/console doctrine:migrations:migrate --no-interaction && \
