@@ -72,6 +72,9 @@ jobs:
                   APP_SECRET: ${{ secrets.APP_SECRET }}
                   POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
                   RABBITMQ_DEFAULT_PASS: ${{ secrets.RABBITMQ_DEFAULT_PASS }}
+                  RABBITMQ_SERVER_VERSION: ${{ vars.RABBITMQ_SERVER_VERSION }}
+                  RABBITMQ_USER: ${{ secrets.RABBITMQ_USER }}
+                  RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
                   DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
               run: |
                   echo "Testing SSH connection with verbose output..."
