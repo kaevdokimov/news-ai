@@ -30,8 +30,7 @@ services:
     working_dir: /var/www/app
     extra_hosts:
       - host.docker.internal:host-gateway
-    volumes:
-      - ./:/var/www/app
+    # Том удален, чтобы использовать файлы из образа
     user: "${UID:-1000}:${GID:-1000}"
     environment:
       USER: ${USER:-www-data}
