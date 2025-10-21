@@ -86,18 +86,6 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq:cached
 
-  ###> symfony/mailer ###
-  news_ai_mailer:
-    container_name: news_ai_mailer
-    image: axllent/mailpit
-    ports:
-      - "1025"
-      - "8025"
-    environment:
-      MP_SMTP_AUTH_ACCEPT_ANY: 1
-      MP_SMTP_AUTH_ALLOW_INSECURE: 1
-###< symfony/mailer ###
-
 #    # Сервис для периодического парсинга RSS
 #  news_ai_rss_parser:
 #      container_name: news_ai_rss_parser
