@@ -6,6 +6,8 @@ composer install -o
 /usr/local/bin/php bin/console doctrine:migrations:migrate -n --allow-no-migration
 /usr/local/bin/php bin/console doctrine:fixtures:load -n --append
 
-crond -f -d
-php-fpm --nodaemonize
+# Start cron in the background as root
+/usr/sbin/crond -f -L /var/log/cron/cron.log &
 
+# Start the web server
+php-fpm

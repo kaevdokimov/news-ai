@@ -47,13 +47,42 @@ COPY --chown=www-data:www-data .docker/app/cmd.sh ${APP_DIR}/.docker/app/cmd.sh
 
 # Set working directory and permissions
 WORKDIR ${APP_DIR}
-RUN chmod +x ${APP_DIR}/.docker/app/cmd.sh && \
-    # Ensure cache and logs directories are writable
-    mkdir -p var/cache var/log var/cache/prod && \
-    chown -R www-data:www-data var
+RUN mkdir -p var/cache var/log var/cache/prod && \
+    chown -R www-data:www-data var && \
+    chmod -R 777 var && \
+    chmod +x ${APP_DIR}/.docker/app/cmd.sh && \
+    # Set correct permissions for src directory
+    find ${APP_DIR}/src -type d -exec chmod 755 {} \; && \
+    find ${APP_DIR}/src -type f -exec chmod 644 {} \;
 
-# Switch to non-root user
+# Copy and set up the entrypoint script first
+COPY --chown=www-data:www-data .docker/app/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Then install cron and set up the cron job
+USER root
+RUN apk add --no-cache dcron su-exec && \
+    # Create cron log directory
+    mkdir -p /var/log/cron && \
+    # Create cron job
+    echo "*/5 * * * * /usr/local/bin/php /var/www/app/bin/console app:parse-rss >> /var/log/cron/cron.log 2>&1" > /etc/crontabs/root && \
+    # Set correct permissions
+    chmod 0644 /etc/crontabs/root && \
+    chown root:root /etc/crontabs/root && \
+    # Create the log file
+    touch /var/log/cron/cron.log && \
+    chmod 666 /var/log/cron/cron.log
+
+# Install supervisord
+USER root
+RUN apk add --no-cache supervisor && \
+    mkdir -p /etc/supervisor/conf.d
+
+# Copy supervisord configuration
+COPY --chown=www-data:www-data .docker/app/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Switch back to www-data user
 USER www-data
 
-# Run the application
-CMD ["/var/www/app/.docker/app/cmd.sh"]
+# Run the application with supervisord
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

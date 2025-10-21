@@ -20,8 +20,8 @@ services:
     restart: unless-stopped
     image: ${DOCKER_IMAGE}
     environment:
-      - APP_ENV=${APP_ENV:-prod}
-      - APP_DEBUG=${APP_DEBUG:-0}
+      - APP_ENV=prod
+      - APP_DEBUG=0
       - APP_SECRET=${APP_SECRET}
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@news_ai_pg:5432/${POSTGRES_DB}?serverVersion=15&charset=utf8
       - MESSENGER_TRANSPORT_DSN=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@news_ai_rabbitmq:5672/%2f/messages
