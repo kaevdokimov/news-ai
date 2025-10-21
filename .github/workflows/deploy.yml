@@ -39,25 +39,31 @@ jobs:
             - name: Setup SSH
               run: |
                   mkdir -p ~/.ssh
-                  # Ensure proper key formatting with base64 decode
-                  echo "${{ secrets.SSH_PRIVATE_KEY }}" | base64 -d > ~/.ssh/id_ecdsa
+                  # Save key directly and clean up any potential issues
+                  echo "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ecdsa
                   chmod 600 ~/.ssh/id_ecdsa
 
-                  # Configure SSH client with specific key type
+                  # Configure SSH client
                   echo "Host *" > ~/.ssh/config
                   echo "  StrictHostKeyChecking no" >> ~/.ssh/config
                   echo "  UserKnownHostsFile=/dev/null" >> ~/.ssh/config
                   echo "  IdentityFile ~/.ssh/id_ecdsa" >> ~/.ssh/config
-                  echo "  PubkeyAcceptedKeyTypes ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521" >> ~/.ssh/config
                   chmod 600 ~/.ssh/config
 
-                  # Debug information
+                  # Extended debug information
                   echo "SSH client version:"
                   ssh -V
-                  echo "Key file permissions and type:"
+                  echo "OpenSSL version:"
+                  openssl version
+                  echo "Key file permissions:"
                   ls -la ~/.ssh/id_ecdsa
-                  echo "Testing key format:"
-                  ssh-keygen -l -f ~/.ssh/id_ecdsa || echo "Invalid key format"
+                  echo "Key file first line:"
+                  head -n1 ~/.ssh/id_ecdsa | grep -v "KEY" || true
+                  echo "Key file structure:"
+                  grep -c "BEGIN .* PRIVATE KEY" ~/.ssh/id_ecdsa || true
+                  grep -c "END .* PRIVATE KEY" ~/.ssh/id_ecdsa || true
+                  echo "Attempting key validation:"
+                  ssh-keygen -y -f ~/.ssh/id_ecdsa > /dev/null 2>&1 || echo "Invalid key format detected"
 
             - name: Test SSH connection and deploy to server
               env:

@@ -56,3 +56,5 @@ node_modules/
 phpstan.neon
 ###< phpstan/phpstan ###
 .github/copilot-instructions.md
+deploy_key
+deploy_key.pub
