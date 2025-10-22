@@ -50,6 +50,8 @@ RUN mkdir -p var/cache var/log var/cache/prod && \
     chown -R www-data:www-data var && \
     chmod -R 777 var && \
     chmod +x ${APP_DIR}/.docker/app/cmd.sh && \
+    # Ensure empty .env exists to satisfy Symfony Runtime Dotenv boot
+    touch ${APP_DIR}/.env && chmod 0644 ${APP_DIR}/.env && chown www-data:www-data ${APP_DIR}/.env && \
     # Set correct permissions for src directory
     find ${APP_DIR}/src -type d -exec chmod 755 {} \; && \
     find ${APP_DIR}/src -type f -exec chmod 644 {} \;
