@@ -81,8 +81,11 @@ RUN apk add --no-cache supervisor && \
 # Copy supervisord configuration
 COPY --chown=www-data:www-data .docker/app/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Switch back to www-data user
-USER www-data
+# Set entrypoint to initialize services (cron) and drop privileges
+ENTRYPOINT ["/entrypoint.sh"]
 
-# Run the application with supervisord
+# Ensure we start as root; entrypoint will drop to www-data
+USER root
+
+# Run the application with supervisord (managed as www-data via entrypoint)
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

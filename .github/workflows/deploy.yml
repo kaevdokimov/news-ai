@@ -58,9 +58,10 @@ jobs:
                   # Create deployment directory
                   ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "mkdir -p ${{ secrets.DEPLOY_PATH }}"
 
-                  # Copy files
-                  scp -r -P ${{ secrets.SSH_PORT }} .docker ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/
-                  scp -P ${{ secrets.SSH_PORT }} compose-production.yaml ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/compose.yaml
+                  # Copy project files (for Nginx bind mount and configs)
+                  scp -r -P ${{ secrets.SSH_PORT }} . ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/
+                  # Use production compose file as compose.yaml
+                  ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cp ${{ secrets.DEPLOY_PATH }}/compose-production.yaml ${{ secrets.DEPLOY_PATH }}/compose.yaml"
 
                   # Deploy application
                   ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.DEPLOY_PATH }} && \
@@ -77,11 +78,11 @@ jobs:
                   DOCKER_USERNAME=${{ vars.DOCKER_USERNAME }}
                   DOCKER_IMAGE=${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:${{ github.sha }}
                   EOF
-                  
+
                   # Pull the pre-built image
                   echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ vars.DOCKER_USERNAME }} --password-stdin ${{ vars.DOCKER_REGISTRY }}
                   docker pull $DOCKER_IMAGE
-                  
+
                   # Update services
                   docker compose pull
                   docker compose up -d --wait"
