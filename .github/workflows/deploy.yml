@@ -80,6 +80,7 @@ jobs:
                   DOCKER_REGISTRY=${{ vars.DOCKER_REGISTRY }}
                   DOCKER_USERNAME=${{ vars.DOCKER_USERNAME }}
                   DOCKER_IMAGE=${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:${{ github.sha }}
+                  DEFAULT_URI=${{ secrets.DEFAULT_URI }}
                   EOF
 
                   # Pull the pre-built image

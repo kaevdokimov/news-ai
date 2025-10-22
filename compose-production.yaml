@@ -26,6 +26,7 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@news_ai_pg:5432/${POSTGRES_DB}?serverVersion=${POSTGRES_VERSION:-18}&charset=utf8
       - MESSENGER_TRANSPORT_DSN=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@news_ai_rabbitmq:5672/%2f/messages
       - CORS_ALLOW_ORIGIN=^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$
+      - DEFAULT_URI=${DEFAULT_URI:-http://localhost}
     depends_on:
       - news_ai_pg
       - news_ai_rabbitmq
