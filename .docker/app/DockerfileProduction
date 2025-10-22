@@ -81,6 +81,11 @@ RUN apk add --no-cache supervisor && \
 # Copy supervisord configuration
 COPY --chown=www-data:www-data .docker/app/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
+# Prepare supervisord logging directory
+RUN mkdir -p /var/log/supervisord \
+    && touch /var/log/supervisord/supervisord.log \
+    && chmod 0644 /var/log/supervisord/supervisord.log
+
 # Set entrypoint to initialize services (cron) and drop privileges
 ENTRYPOINT ["/entrypoint.sh"]
 
