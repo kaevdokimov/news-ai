@@ -206,11 +206,17 @@ rector:
 	docker compose run --rm news_ai_app composer rector
 	@echo "${GREEN}Код исправлен, авторефакторинг завершен${NC}"
 
+phpstan:
+	@echo "${BLUE}Проверка статическим анализатором...${NC}"
+	docker compose run --rm news_ai_app composer phpstan
+	@echo "${GREEN}Проверка кода завершена${NC}"
+
 precheck:
 	@echo "${BLUE}Проверка кода на наличие ошибок...${NC}"
 	docker compose run --rm news_ai_app composer lint
 	docker compose run --rm news_ai_app composer php-cs-check
 	docker compose run --rm news_ai_app composer rector-check
+	docker compose run --rm news_ai_app composer phpstan
 	@echo "${GREEN}Проверка кода завершена${NC}"
 
 ############################
