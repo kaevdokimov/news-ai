@@ -17,7 +17,6 @@ COPY --chown=www-data:www-data \
     composer.json \
     composer.lock \
     symfony.lock \
-    .env \
     ${APP_DIR}/
 
 # Install Composer and system dependencies (Alpine Linux)
