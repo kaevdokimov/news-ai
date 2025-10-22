@@ -28,6 +28,7 @@ command:
       sync_processing: 'Запущена синхронная обработка %count% источников'
       processing_complete: 'Обработка завершена. Успешно: %success%, с ошибками: %errors%'
       items_processed: 'Всего обработано записей: %total%'
+      invalid_url: 'URL должен быть не пустой строкой'
 
 
 # Общие сообщения

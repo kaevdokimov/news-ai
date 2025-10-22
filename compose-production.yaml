@@ -28,6 +28,7 @@ services:
       - CORS_ALLOW_ORIGIN=^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$
     depends_on:
       - news_ai_pg
+      - news_ai_rabbitmq
     working_dir: /var/www/app
     extra_hosts:
       - host.docker.internal:host-gateway

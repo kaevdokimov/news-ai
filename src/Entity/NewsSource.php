@@ -164,7 +164,7 @@ class NewsSource implements \Stringable
     {
         if ($this->newsItems->removeElement($newsItem)) {
             // set the owning side to null (unless already changed)
-            if ($newsItem->getSource() === $this) {
+            if ($newsItem->getNewsSource() === $this) {
                 $newsItem->setNewsSource(null);
             }
         }

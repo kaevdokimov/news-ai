@@ -53,6 +53,10 @@ readonly class RssParserService
         ]);
 
         try {
+            if (!\is_string($newsSource->getUrl()) || empty($newsSource->getUrl())) {
+                throw new \InvalidArgumentException($this->translator->trans('rss_parser.invalid_url'));
+            }
+
             $response = $this->httpClient->request('GET', $newsSource->getUrl());
             $content = $response->getContent();
 
@@ -74,18 +78,20 @@ readonly class RssParserService
                 $items = $xml->xpath('//entry');
             }
 
-            foreach ($items as $item) {
-                try {
-                    $newsItem = $this->parseRssItem($item, $newsSource);
+            if (is_iterable($items)) {
+                foreach ($items as $item) {
+                    try {
+                        $newsItem = $this->parseRssItem($item, $newsSource);
 
-                    if ($newsItem instanceof NewsItem) {
-                        ++$itemsCount;
+                        if ($newsItem instanceof NewsItem) {
+                            ++$itemsCount;
+                        }
+                    } catch (\Exception $e) {
+                        $this->logger->warning($this->translator->trans('rss_parser.item_parse_error'), [
+                            'source_id' => $newsSource->id,
+                            'error' => $e->getMessage(),
+                        ]);
                     }
-                } catch (\Exception $e) {
-                    $this->logger->warning($this->translator->trans('rss_parser.item_parse_error'), [
-                        'source_id' => $newsSource->id,
-                        'error' => $e->getMessage(),
-                    ]);
                 }
             }
 

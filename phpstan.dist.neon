@@ -1,6 +1,32 @@
+includes:
+    - vendor/phpstan/phpstan-doctrine/extension.neon
+    - vendor/phpstan/phpstan-symfony/extension.neon
+    - vendor/phpstan/phpstan-symfony/rules.neon
+
 parameters:
-    level: max
+    parallel:
+        processTimeout: 300.0
+        maximumNumberOfProcesses: 4
+        jobSize: 20
+    level: 8
     paths:
         - config/
         - public/
         - src/
+    ignoreErrors:
+        - '#PHPDoc tag @throws with type#'
+        - '#Deprecated in PHP 8.#'
+        - '#Cannot call method debug\(\) on Psr\\Log\\LoggerInterface\|null.#'
+        - '#Cannot call method warning\(\) on Psr\\Log\\LoggerInterface\|null.#'
+        - '#Cannot call method critical\(\) on Psr\\Log\\LoggerInterface\|null.#'
+        - '#Cannot call method error\(\) on Psr\\Log\\LoggerInterface\|null.#'
+        - '#Cannot call method info\(\) on Psr\\Log\\LoggerInterface\|null.#'
+        - '#Method Request\\Repository\\(\w+\\)*\w+Repository::(get|find)\w+\(\) should return ((array|iterable)<)?Application\\Entity\\(\w+\\)*\w+(>)?(\|null)? but returns (object|mixed)\.#'
+        - '#^Cannot access property [a-zA-Z0-9\\_] on mixed\\.$#'
+        - identifier: missingType.iterableValue
+        - identifier: missingType.generics
+    excludePaths:
+        - */tests/*
+        - config/*
+    reportUnmatchedIgnoredErrors: false
+
