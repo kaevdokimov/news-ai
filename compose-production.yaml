@@ -23,7 +23,7 @@ services:
       - APP_ENV=prod
       - APP_DEBUG=0
       - APP_SECRET=${APP_SECRET}
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@news_ai_pg:5432/${POSTGRES_DB}?serverVersion=15&charset=utf8
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@news_ai_pg:5432/${POSTGRES_DB}?serverVersion=${POSTGRES_VERSION:-18}&charset=utf8
       - MESSENGER_TRANSPORT_DSN=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@news_ai_rabbitmq:5672/%2f/messages
       - CORS_ALLOW_ORIGIN=^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$
     depends_on:
