@@ -47,12 +47,16 @@ jobs:
                   COMPOSE_PROJECT_NAME: ${{ vars.COMPOSE_PROJECT_NAME }}
                   APP_ENV: ${{ secrets.APP_ENV }}
                   APP_SECRET: ${{ secrets.APP_SECRET }}
+                  POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
                   POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+                  POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+                  POSTGRES_VERSION: ${{ vars.POSTGRES_VERSION }}
                   RABBITMQ_DEFAULT_PASS: ${{ secrets.RABBITMQ_DEFAULT_PASS }}
                   RABBITMQ_SERVER_VERSION: ${{ vars.RABBITMQ_SERVER_VERSION }}
                   RABBITMQ_USER: ${{ secrets.RABBITMQ_USER }}
                   RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
                   DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+                  DEFAULT_URI: ${{ secrets.DEFAULT_URI }}
               run: |
                   # Test connection
                   ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "echo 'SSH connection successful'"
