@@ -58,3 +58,5 @@ phpstan.neon
 .github/copilot-instructions.md
 deploy_key
 deploy_key.pub
+/.lingma/
+/.aiassistant/
