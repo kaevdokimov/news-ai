@@ -1,7 +1,6 @@
 doctrine:
     dbal:
         url: '%env(resolve:DATABASE_URL)%'
-        server_version: '%env(default:18:POSTGRES_VERSION)%'
         profiling_collect_backtrace: '%kernel.debug%'
     orm:
         validate_xml_mapping: true
