@@ -1,7 +1,13 @@
 
+networks:
+  backend:
+    driver: bridge
+
 services:
   # Веб-сервер Nginx для обслуживания запросов к приложению
   news_ai_nginx:
+    networks:
+      - backend
     container_name: news_ai_nginx
     image: nginx:1.29-alpine3.22
     restart: unless-stopped
@@ -17,6 +23,8 @@ services:
   # PHP-FPM для запуска PHP приложения
   news_ai_app:
     container_name: news_ai_app
+    networks:
+      - backend
     restart: unless-stopped
     image: ${DOCKER_IMAGE}
     environment:
@@ -48,7 +56,7 @@ services:
         POSTGRES_USER: ${POSTGRES_USER}
         POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
         POSTGRES_DB: ${POSTGRES_DB}
-        POSTGRES_HOST_AUTH_METHOD: "trust"
+        POSTGRES_HOST_AUTH_METHOD: md5
     ports:
       - "5434:5432"
     healthcheck:
@@ -58,12 +66,22 @@ services:
       start_period: 60s
     volumes:
       - postgres_data:/var/lib/postgresql/data:rw
+      - ./.docker/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
+      - ./.docker/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
+    command: >
+      -c config_file=/etc/postgresql/postgresql.conf
+      -c hba_file=/etc/postgresql/pg_hba.conf
+    networks:
+      - backend
+      - default
       # You may use a bind-mounted host directory instead, so that it is harder to accidentally remove the volume and lose all your data!
       # - ./docker/db/data:/var/lib/postgresql/data:rw
 
   # Redis для кэширования
   news_ai_redis:
     container_name: news_ai_redis
+    networks:
+      - backend
     image: redis:8.2-alpine3.22
     restart: unless-stopped
     ports:
@@ -74,6 +92,8 @@ services:
   # RabbitMQ для обработки очередей сообщений
   news_ai_rabbitmq:
     container_name: news_ai_rabbitmq
+    networks:
+      - backend
     image: rabbitmq:${RABBITMQ_SERVER_VERSION:-4.1.4}-management-alpine
     restart: unless-stopped
     environment:
