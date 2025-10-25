@@ -85,7 +85,7 @@ jobs:
                   COMPOSE_PROJECT_NAME=${{ vars.COMPOSE_PROJECT_NAME }}
                   DOCKER_REGISTRY=${{ vars.DOCKER_REGISTRY }}
                   DOCKER_USERNAME=${{ vars.DOCKER_USERNAME }}
-                  DOCKER_IMAGE=${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:${{ github.sha }}
+                  DOCKER_IMAGE=${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:latest
                   DEFAULT_URI=${{ secrets.DEFAULT_URI }}
                   EOF
 
