@@ -16,8 +16,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 class NewsSource implements \Stringable
 {
     #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
+    #[ORM\GeneratedValue(strategy: 'SEQUENCE')]
+    #[ORM\Column(type: Types::INTEGER)]
     public ?int $id = null {
         get {
             return $this->id;
@@ -41,7 +41,7 @@ class NewsSource implements \Stringable
     #[ORM\Column]
     private bool $isActive = true;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, options: ['default' => 'CURRENT_TIMESTAMP'])]
     private ?\DateTimeInterface $createdAt = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
@@ -49,6 +49,11 @@ class NewsSource implements \Stringable
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
     private ?\DateTimeInterface $updatedAt = null;
+
+    #[ORM\Column(length: 10, options: ['default' => 'rus'])]
+    #[Assert\NotBlank]
+    #[Assert\Length(max: 10)]
+    private string $country = 'rus';
 
     /**
      * @var Collection<int, NewsItem>
@@ -63,7 +68,6 @@ class NewsSource implements \Stringable
     public function __construct()
     {
         $this->newsItems = new ArrayCollection();
-        $this->createdAt = new \DateTime();
     }
 
     public function getName(): ?string
@@ -86,6 +90,18 @@ class NewsSource implements \Stringable
     public function setUrl(string $url): static
     {
         $this->url = $url;
+
+        return $this;
+    }
+
+    public function getCountry(): string
+    {
+        return $this->country;
+    }
+
+    public function setCountry(string $country): static
+    {
+        $this->country = $country;
 
         return $this;
     }
@@ -162,11 +178,8 @@ class NewsSource implements \Stringable
 
     public function removeNewsItem(NewsItem $newsItem): static
     {
-        if ($this->newsItems->removeElement($newsItem)) {
-            // set the owning side to null (unless already changed)
-            if ($newsItem->getNewsSource() === $this) {
-                $newsItem->setNewsSource(null);
-            }
+        if ($this->newsItems->removeElement($newsItem) && $newsItem->getNewsSource() === $this) {
+            $newsItem->setNewsSource(null);
         }
 
         return $this;
