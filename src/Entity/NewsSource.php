@@ -68,6 +68,7 @@ class NewsSource implements \Stringable
     public function __construct()
     {
         $this->newsItems = new ArrayCollection();
+        $this->createdAt = new \DateTimeImmutable();
     }
 
     public function getName(): ?string
