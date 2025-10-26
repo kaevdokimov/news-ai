@@ -12,3 +12,10 @@ _sonata_admin:
     resource: .
     type: sonata_admin
     prefix: /admin
+
+login_check:
+    path: /login_check
+
+root_redirect:
+    path: /
+    controller: App\Controller\MainController::index
