@@ -96,7 +96,7 @@ readonly class RssParserService
             }
 
             // Обновляем время последнего парсинга
-            $newsSource->setLastParsedAt(new \DateTime());
+            $newsSource->setLastParsedAt(new \DateTimeImmutable());
             $this->entityManager->flush();
 
             $this->logger->info($this->translator->trans('rss_parser.parsing_completed'), [
@@ -253,7 +253,7 @@ readonly class RssParserService
         return null;
     }
 
-    private function getItemDate(\SimpleXMLElement $item): \DateTime
+    private function getItemDate(\SimpleXMLElement $item): \DateTimeImmutable
     {
         $dateFields = ['pubDate', 'published', 'updated', 'dc:date'];
 
@@ -263,7 +263,7 @@ readonly class RssParserService
 
                 if (!empty($dateString)) {
                     try {
-                        return new \DateTime($dateString);
+                        return new \DateTimeImmutable($dateString);
                     } catch (\Exception) {
                         // Продолжаем поиск
                     }
@@ -272,6 +272,6 @@ readonly class RssParserService
         }
 
         // Если дата не найдена, используем текущее время
-        return new \DateTime();
+        return new \DateTimeImmutable();
     }
 }
