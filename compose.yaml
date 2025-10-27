@@ -43,8 +43,6 @@ services:
       - news_ai_rabbitmq
     volumes:
       - ./:/var/www/app
-      - /var/www/app/var
-      - /var/www/app/vendor
     working_dir: /var/www/app
     extra_hosts:
       - host.docker.internal:host-gateway

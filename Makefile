@@ -172,7 +172,7 @@ messenger-stats:
 	docker-compose run --rm news_ai_app php bin/console messenger:stats --profile
 	@echo "${GREEN}Статистика получена${NC}"
 
-#Остановка обработчиков
+# Остановка обработчиков
 messenger-stop:
 	@echo "${BLUE}Остановка обработчиков сообщений...${NC}"
 	docker-compose run --rm news_ai_app php bin/console messenger:stop-workers --profile
