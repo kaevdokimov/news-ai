@@ -97,7 +97,7 @@ jobs:
                   DOCKER_USERNAME=${{ vars.DOCKER_USERNAME }}
                   DOCKER_IMAGE=${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:latest
                   DEFAULT_URI=${{ secrets.DEFAULT_URI }}
-                  EOF
+                  EOF"
 
                   # Pull the pre-built image
                   echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ vars.DOCKER_USERNAME }} --password-stdin ${{ vars.DOCKER_REGISTRY }}
