@@ -69,6 +69,9 @@ jobs:
                   # Use production compose file as compose.yaml
                   ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cp ${{ secrets.DEPLOY_PATH }}/compose-production.yaml ${{ secrets.DEPLOY_PATH }}/compose.yaml"
 
+                  # Create certbot directories
+                  ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "mkdir -p ${{ secrets.DEPLOY_PATH }}/certbot/conf ${{ secrets.DEPLOY_PATH }}/certbot/www"
+
                   # Deploy application
                   ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.DEPLOY_PATH }} && \
                     cat > .env << EOF
@@ -95,4 +98,14 @@ jobs:
 
                   # Update services
                   docker compose pull
-                  docker compose up -d --wait"
+                  docker compose up -d --wait
+
+                  # Apply database migrations if necessary
+                  docker compose run --rm news_ai_app php bin/console doctrine:migrations:migrate -n --allow-no-migration
+
+                  # Initialize Let's Encrypt certificates
+                  echo "Setting up Let's Encrypt certificates..."
+                  docker run --rm -v "${{ secrets.DEPLOY_PATH }}/certbot/conf:/etc/letsencrypt" -v "${{ secrets.DEPLOY_PATH }}/certbot/www:/var/www/certbot" certbot/certbot certonly --webroot --webroot-path=/var/www/certbot --email admin@signalscan.ru --agree-tos --no-eff-email -d signalscan.ru -d www.signalscan.ru
+
+                  # Reload nginx to apply certificates
+                  docker compose exec news_ai_nginx nginx -s reload"
