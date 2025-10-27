@@ -64,10 +64,17 @@ jobs:
                   # Create deployment directory
                   ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "mkdir -p ${{ secrets.DEPLOY_PATH }}"
 
-                  # Copy project files (for Nginx bind mount and configs)
-                  scp -r -P ${{ secrets.SSH_PORT }} . ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/
-                  # Use production compose file as compose.yaml
-                  ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cp ${{ secrets.DEPLOY_PATH }}/compose-production.yaml ${{ secrets.DEPLOY_PATH }}/compose.yaml"
+                  # Copy only necessary files (avoiding git files that cause permission issues)
+                  ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "mkdir -p ${{ secrets.DEPLOY_PATH }}/.docker/nginx ${{ secrets.DEPLOY_PATH }}/config/packages ${{ secrets.DEPLOY_PATH }}/public"
+                  scp -P ${{ secrets.SSH_PORT }} .docker/nginx/default-production.conf ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/.docker/nginx/
+                  scp -P ${{ secrets.SSH_PORT }} compose-production.yaml ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/compose.yaml
+                  scp -P ${{ secrets.SSH_PORT }} .env.prod ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/.env
+                  
+                  # Copy config files
+                  scp -P ${{ secrets.SSH_PORT }} config/packages/*.yaml ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/config/packages/
+                  
+                  # Copy public files
+                  scp -r -P ${{ secrets.SSH_PORT }} public/* ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/public/
 
                   # Create certbot directories
                   ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "mkdir -p ${{ secrets.DEPLOY_PATH }}/certbot/conf ${{ secrets.DEPLOY_PATH }}/certbot/www"
@@ -103,9 +110,15 @@ jobs:
                   # Apply database migrations if necessary
                   docker compose run --rm news_ai_app php bin/console doctrine:migrations:migrate -n --allow-no-migration
 
-                  # Initialize Let's Encrypt certificates
-                  echo "Setting up Let's Encrypt certificates..."
-                  docker run --rm -v "${{ secrets.DEPLOY_PATH }}/certbot/conf:/etc/letsencrypt" -v "${{ secrets.DEPLOY_PATH }}/certbot/www:/var/www/certbot" certbot/certbot certonly --webroot --webroot-path=/var/www/certbot --email admin@signalscan.ru --agree-tos --no-eff-email -d signalscan.ru -d www.signalscan.ru
+                  # Check if certificates exist, if not - obtain them
+                  echo "Checking for existing certificates..."
+                  if [ ! -f "${{ secrets.DEPLOY_PATH }}/certbot/conf/live/signalscan.ru/fullchain.pem" ]; then
+                    echo "No existing certificates found. Obtaining new certificates..."
+                    docker run --rm -v "${{ secrets.DEPLOY_PATH }}/certbot/conf:/etc/letsencrypt" -v "${{ secrets.DEPLOY_PATH }}/certbot/www:/var/www/certbot" certbot/certbot certonly --webroot --webroot-path=/var/www/certbot --email admin@signalscan.ru --agree-tos --no-eff-email -d signalscan.ru -d www.signalscan.ru || echo "Failed to obtain certificates. Continuing without SSL for now."
+                  else
+                    echo "Certificates found. Renewing if necessary..."
+                    docker run --rm -v "${{ secrets.DEPLOY_PATH }}/certbot/conf:/etc/letsencrypt" -v "${{ secrets.DEPLOY_PATH }}/certbot/www:/var/www/certbot" certbot/certbot renew || echo "Failed to renew certificates. Continuing with existing ones."
+                  fi
 
                   # Reload nginx to apply certificates
-                  docker compose exec news_ai_nginx nginx -s reload"
+                  docker compose exec news_ai_nginx nginx -s reload || echo "Failed to reload nginx. Please check nginx configuration."

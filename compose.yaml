@@ -1,7 +1,12 @@
+networks:
+  backend:
+    driver: bridge
 
 services:
   # Веб-сервер Nginx для обслуживания запросов к приложению
   news_ai_nginx:
+    networks:
+      - backend
     container_name: news_ai_nginx
     image: nginx:1.29-alpine3.22
     restart: unless-stopped
@@ -10,61 +15,68 @@ services:
     volumes:
       - ./.docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
       - ./:/var/www/app
-      - /etc/nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - news_ai_app
 
   # PHP-FPM для запуска PHP приложения
   news_ai_app:
     container_name: news_ai_app
+    networks:
+      - backend
     restart: unless-stopped
     build:
       context: .
       dockerfile: .docker/app/Dockerfile
-      args:
-        UID: ${UID:-1000}
-        GID: ${GID:-1001}
-    command: [ 'php-fpm', '--nodaemonize' ]
+    environment:
+        - APP_ENV=dev
+        - APP_DEBUG=1
+        - APP_SECRET=392f5127203b7501096e91e59300268d
+        - POSTGRES_USER=postgres
+        - POSTGRES_PASSWORD=postgres
+        - POSTGRES_DB=postgres
+        - POSTGRES_VERSION=18
+        - DATABASE_URL=postgresql://postgres:postgres@news_ai_pg:5432/postgres?serverVersion=18&charset=utf8
+        - MESSENGER_TRANSPORT_DSN=amqp://guest:guest@news_ai_rabbitmq:5672/%2f/messages
+        - CORS_ALLOW_ORIGIN=^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$
     depends_on:
       - news_ai_pg
+      - news_ai_rabbitmq
+    volumes:
+      - ./:/var/www/app
+      - /var/www/app/var
+      - /var/www/app/vendor
     working_dir: /var/www/app
     extra_hosts:
       - host.docker.internal:host-gateway
-    volumes:
-      - ./:/var/www/app
-    user: "${UID:-1000}:${GID:-1000}"
-    environment:
-      USER: ${USER:-www-data}
-      UID: ${UID:-1000}
-      GID: ${GID:-1001}
-      CORS_ALLOW_ORIGIN: '*'
-      APP_ENV: ${APP_ENV:-dev}
-      APP_DEBUG: ${APP_DEBUG:-1}
 
   # PostgreSQL база данных
   news_ai_pg:
     container_name: news_ai_pg
-    image: postgres:${POSTGRES_VERSION:-18}-alpine3.22
+    image: postgres:18-alpine3.22
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-postgres}
-      POSTGRES_INITDB_ARGS: "--data-checksums"
+        POSTGRES_INITDB_ARGS: "--data-checksums"
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: postgres
+        POSTGRES_DB: postgres
+        POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       - "5434:5432"
     healthcheck:
-      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-app}", "-U", "${POSTGRES_USER:-app}"]
+      test: ["CMD", "pg_isready", "-d", "postgres", "-U", "postgres"]
       timeout: 5s
       retries: 5
       start_period: 60s
     volumes:
       - postgres_data:/var/lib/postgresql/data:rw
-      # You may use a bind-mounted host directory instead, so that it is harder to accidentally remove the volume and lose all your data!
-      # - ./docker/db/data:/var/lib/postgresql/data:rw
+    networks:
+      - backend
+      - default
 
   # Redis для кэширования
   news_ai_redis:
     container_name: news_ai_redis
+    networks:
+      - backend
     image: redis:8.2-alpine3.22
     restart: unless-stopped
     ports:
@@ -75,62 +87,52 @@ services:
   # RabbitMQ для обработки очередей сообщений
   news_ai_rabbitmq:
     container_name: news_ai_rabbitmq
-    image: rabbitmq:${RABBITMQ_SERVER_VERSION:-4.1.4}-management-alpine
+    networks:
+      - backend
+    image: rabbitmq:4.1.4-management-alpine
     restart: unless-stopped
     environment:
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-rabbitmq}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-rabbitmq}
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
     ports:
       - "5673:5672"
       - "15673:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq:cached
 
-  ###> symfony/mailer ###
-  news_ai_mailer:
-    container_name: news_ai_mailer
-    image: axllent/mailpit
-    ports:
-      - "1025"
-      - "8025"
-    environment:
-      MP_SMTP_AUTH_ACCEPT_ANY: 1
-      MP_SMTP_AUTH_ALLOW_INSECURE: 1
-###< symfony/mailer ###
+  # Сервис для периодического парсинга RSS
+  news_ai_rss_parser:
+      container_name: news_ai_rss_parser
+      image: alpine/curl:latest
+      restart: unless-stopped
+      depends_on:
+        - news_ai_app
+      command: >
+        sh -c "while true; do
+          echo 'Running RSS parser...' &&
+          docker exec news_ai_app php bin/console app:parse-rss --async &&
+          sleep 60;
+        done"
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+      environment:
+        - APP_ENV=dev
 
-#    # Сервис для периодического парсинга RSS
-#  news_ai_rss_parser:
-#      container_name: news_ai_rss_parser
-#      image: alpine/curl:latest
-#      restart: unless-stopped
-#      depends_on:
-#        - news_ai_app
-#      command: >
-#        sh -c "while true; do
-#          echo 'Running RSS parser...' &&
-#          docker exec news_ai_app php bin/console app:parse-rss --async &&
-#          sleep 60;
-#        done"
-#      volumes:
-#        - /var/run/docker.sock:/var/run/docker.sock
-#      environment:
-#        - APP_ENV=${APP_ENV:-dev}
-#
-#  news_ai_consumer:
-#    container_name: news_ai_consumer
-#    image: alpine/curl:latest
-#    restart: unless-stopped
-#    depends_on:
-#      - news_ai_app
-#    command: >
-#      sh -c "while true; do
-#        echo 'Running consumer...' &&
-#        docker exec news_ai_app php bin/console messenger:consume async --memory-limit=128M --time-limit=600;
-#      done"
-#    volumes:
-#      - /var/run/docker.sock:/var/run/docker.sock
-#    environment:
-#      - APP_ENV=${APP_ENV:-dev}
+  news_ai_consumer:
+    container_name: news_ai_consumer
+    image: alpine/curl:latest
+    restart: unless-stopped
+    depends_on:
+      - news_ai_app
+    command: >
+      sh -c "while true; do
+        echo 'Running consumer...' &&
+        docker exec news_ai_app php bin/console messenger:consume async --memory-limit=128M --time-limit=600;
+      done"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - APP_ENV=dev
 
 volumes:
   postgres_data:

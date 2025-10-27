@@ -2,49 +2,65 @@
 
 set -e
 
-DOMAINS=("signalscan.ru" "www.signalscan.ru")
-CERTBOT_EMAIL="admin@signalscan.ru"
-RSA_KEY_SIZE=4096
-DATA_PATH="./certbot"
-WEBROOT_PATH="/var/www/certbot"
+ domains=(signalscan.ru www.signalscan.ru)
+rsa_key_size=4096
+data_path="./certbot"
+email="admin@signalscan.ru" # Adding a valid address is strongly recommended
+staging=0 # Set to 1 if you're testing your setup to avoid hitting request limits
 
-if [ -d "$DATA_PATH" ]; then
-  read -p "Existing data found for $DOMAINS. Continue and replace existing certificate? (y/N) " decision
+if [ -d "$data_path" ]; then
+  read -p "Existing data found for $domains. Continue and replace existing certificate? (y/N) " decision
   if [ "$decision" != "Y" ] && [ "$decision" != "y" ]; then
     exit
   fi
 fi
 
-if [ ! -e "$DATA_PATH/conf/options-ssl-nginx.conf" ] || [ ! -e "$DATA_PATH/conf/ssl-dhparams.pem" ]; then
+if [ ! -e "$data_path/conf/options-ssl-nginx.conf" ] || [ ! -e "$data_path/conf/ssl-dhparams.pem" ]; then
   echo "### Downloading recommended TLS parameters ..."
-  mkdir -p "$DATA_PATH/conf"
-  curl -s https://raw.githubusercontent.com/certbot/certbot/master/certbot-nginx/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf > "$DATA_PATH/conf/options-ssl-nginx.conf"
-  curl -s https://raw.githubusercontent.com/certbot/certbot/master/certbot/certbot/ssl-dhparams.pem > "$DATA_PATH/conf/ssl-dhparams.pem"
+  mkdir -p "$data_path/conf"
+  curl -s https://raw.githubusercontent.com/certbot/certbot/master/certbot-nginx/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf > "$data_path/conf/options-ssl-nginx.conf"
+  curl -s https://raw.githubusercontent.com/certbot/certbot/master/certbot/certbot/ssl-dhparams.pem > "$data_path/conf/ssl-dhparams.pem"
   echo
 fi
 
-echo "### Creating dummy certificate for $DOMAINS ..."
-PATH="/etc/letsencrypt/live/$DOMAINS"
-mkdir -p "$DATA_PATH/conf/live/$DOMAINS"
-docker run --rm -v "$PWD/$DATA_PATH/conf:/etc/letsencrypt" certbot/certbot certonly --standalone -d "$DOMAINS" --non-interactive --email "$CERTBOT_EMAIL" --agree-tos --force-renewal
-echo
+echo "### Creating dummy certificate for $domains ..."
+path="/etc/letsencrypt/live"
+mkdir -p "$data_path/conf/live"
+for domain in "${domains[@]}"; do
+  mkdir -p "$data_path/conf/live/$domain"
+done
 
 echo "### Starting nginx ..."
 docker compose up --force-recreate -d news_ai_nginx
 echo
 
-echo "### Deleting dummy certificate for $DOMAINS ..."
-docker run --rm -v "$PWD/$DATA_PATH/conf:/etc/letsencrypt" certbot/certbot delete --cert-name "$DOMAINS"
-echo
+# Wait for nginx to start
+sleep 5
 
-echo "### Requesting Let's Encrypt certificate for $DOMAINS ..."
-#Join $DOMAINS to -d args
+echo "### Requesting Let's Encrypt certificate for $domains ..."
+#Join $domains to -d args
 domain_args=""
-for domain in "${DOMAINS[@]}"; do
+for domain in "${domains[@]}"; do
   domain_args="$domain_args -d $domain"
 done
 
-docker run --rm -v "$PWD/$DATA_PATH/conf:/etc/letsencrypt" -v "$PWD/$DATA_PATH/www:/var/www/certbot" certbot/certbot certonly --webroot -w $WEBROOT_PATH $domain_args --email $CERTBOT_EMAIL --non-interactive --agree-tos --force-renewal
+# Select appropriate email arg
+case "$email" in
+  "") email_arg="--register-unsafely-without-email" ;;
+  *) email_arg="--email $email" ;;
+esac
+
+# Enable staging mode if needed
+if [ $staging != "0" ]; then staging_arg="--staging"; fi
+
+docker compose run --rm --entrypoint "\
+  certbot certonly --webroot -w /var/www/certbot \
+    $staging_arg \
+    $email_arg \
+    $domain_args \
+    --rsa-key-size $rsa_key_size \
+    --agree-tos \
+    --force-renewal" certbot
 echo
 
 echo "### Reloading nginx ..."

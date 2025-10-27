@@ -232,3 +232,31 @@ worker:
 	@echo "${BLUE}⚙️ Запуск воркера очередей...${NC}"
 	docker-compose run --rm news_ai_app php -d memory_limit=450M bin/console messenger:consume async -vvv --profile --memory-limit=128M --time-limit=3600
 	@echo "${GREEN}✅ Воркер запущен!${NC}"
+
+############################
+# Команды для работы с SSL-сертификатами
+############################
+# Инициализация SSL-сертификатов Let's Encrypt
+ssl-init:
+	@echo "${BLUE}🔐 Инициализация SSL-сертификатов Let's Encrypt...${NC}"
+	.docker/nginx/init-letsencrypt.sh
+	@echo "${GREEN}✅ SSL-сертификаты инициализированы!${NC}"
+
+# Обновление SSL-сертификатов Let's Encrypt
+ssl-renew:
+	@echo "${BLUE}🔄 Обновление SSL-сертификатов Let's Encrypt...${NC}"
+	docker compose run --rm certbot certbot renew
+	docker compose exec news_ai_nginx nginx -s reload
+	@echo "${GREEN}✅ SSL-сертификаты обновлены!${NC}"
+
+# Проверка SSL-сертификатов
+ssl-check:
+	@echo "${BLUE}🔍 Проверка SSL-сертификатов...${NC}"
+	docker compose run --rm certbot certbot certificates
+	@echo "${GREEN}✅ Проверка SSL-сертификатов завершена!${NC}"
+
+# Создание пакета развертывания
+deploy-package:
+	@echo "${BLUE}📦 Создание пакета развертывания...${NC}"
+	./scripts/create-deploy-package.sh
+	@echo "${GREEN}✅ Пакет развертывания создан в директории deploy!${NC}"

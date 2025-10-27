@@ -1,4 +1,3 @@
-
 networks:
   backend:
     driver: bridge
@@ -15,10 +14,10 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./.docker/nginx/default.conf.template:/etc/nginx/templates/default.conf.template
+      - ./.docker/nginx/default-production.conf:/etc/nginx/templates/default.conf.template
       - ./:/var/www/app
-      - ./certbot/conf:/etc/nginx/certs
-      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/nginx/certs:ro
+      - ./certbot/www:/var/www/certbot:ro
     depends_on:
       - news_ai_app
     environment:
@@ -47,10 +46,12 @@ services:
     depends_on:
       - news_ai_pg
       - news_ai_rabbitmq
+    volumes:
+      - ./public:/var/www/app/public:ro
+      - ./var:/var/www/app/var:rw
     working_dir: /var/www/app
     extra_hosts:
       - host.docker.internal:host-gateway
-    # Образ сам управляет процессами через supervisord
 
   # PostgreSQL база данных
   news_ai_pg:
@@ -111,7 +112,7 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq:cached
 
   # Сервис для получения и обновления SSL-сертификатов Let's Encrypt
-  news_ai_certbot:
+  certbot:
     container_name: news_ai_certbot
     image: certbot/certbot
     restart: unless-stopped
