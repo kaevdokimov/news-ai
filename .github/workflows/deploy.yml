@@ -114,6 +114,23 @@ jobs:
                   echo "Checking for existing certificates..."
                   if [ ! -f "${{ secrets.DEPLOY_PATH }}/certbot/conf/live/signalscan.ru/fullchain.pem" ]; then
                     echo "No existing certificates found. Obtaining new certificates..."
+                    # Create dummy certificates to start nginx
+                    mkdir -p ${{ secrets.DEPLOY_PATH }}/certbot/conf/live/signalscan.ru
+                    mkdir -p ${{ secrets.DEPLOY_PATH }}/certbot/conf/live/www.signalscan.ru
+                    openssl req -x509 -nodes -newkey rsa:1024 -days 1 -keyout "${{ secrets.DEPLOY_PATH }}/certbot/conf/live/signalscan.ru/privkey.pem" -out "${{ secrets.DEPLOY_PATH }}/certbot/conf/live/signalscan.ru/fullchain.pem" -subj "/CN=localhost"
+                    openssl req -x509 -nodes -newkey rsa:1024 -days 1 -keyout "${{ secrets.DEPLOY_PATH }}/certbot/conf/live/www.signalscan.ru/privkey.pem" -out "${{ secrets.DEPLOY_PATH }}/certbot/conf/live/www.signalscan.ru/fullchain.pem" -subj "/CN=localhost"
+                    
+                    # Start nginx with dummy certificates
+                    docker compose up -d news_ai_nginx
+                    sleep 5
+                    
+                    # Delete dummy certificates
+                    rm -f ${{ secrets.DEPLOY_PATH }}/certbot/conf/live/signalscan.ru/privkey.pem
+                    rm -f ${{ secrets.DEPLOY_PATH }}/certbot/conf/live/signalscan.ru/fullchain.pem
+                    rm -f ${{ secrets.DEPLOY_PATH }}/certbot/conf/live/www.signalscan.ru/privkey.pem
+                    rm -f ${{ secrets.DEPLOY_PATH }}/certbot/conf/live/www.signalscan.ru/fullchain.pem
+                    
+                    # Obtain real certificates
                     docker run --rm -v "${{ secrets.DEPLOY_PATH }}/certbot/conf:/etc/letsencrypt" -v "${{ secrets.DEPLOY_PATH }}/certbot/www:/var/www/certbot" certbot/certbot certonly --webroot --webroot-path=/var/www/certbot --email admin@signalscan.ru --agree-tos --no-eff-email -d signalscan.ru -d www.signalscan.ru || echo "Failed to obtain certificates. Continuing without SSL for now."
                   else
                     echo "Certificates found. Renewing if necessary..."

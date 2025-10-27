@@ -172,7 +172,7 @@ messenger-stats:
 	docker-compose run --rm news_ai_app php bin/console messenger:stats --profile
 	@echo "${GREEN}Статистика получена${NC}"
 
-# Остановка обработчиков
+#Остановка обработчиков
 messenger-stop:
 	@echo "${BLUE}Остановка обработчиков сообщений...${NC}"
 	docker-compose run --rm news_ai_app php bin/console messenger:stop-workers --profile
@@ -222,7 +222,6 @@ precheck:
 ############################
 # Команды для запуска парсинга
 ############################
-
 parse:
 	@echo "${BLUE}📰 Запуск парсинга новостей...${NC}"
 	docker-compose run --rm news_ai_app php bin/console app:parse-rss --async
@@ -239,7 +238,7 @@ worker:
 # Инициализация SSL-сертификатов Let's Encrypt
 ssl-init:
 	@echo "${BLUE}🔐 Инициализация SSL-сертификатов Let's Encrypt...${NC}"
-	.docker/nginx/init-letsencrypt.sh
+	./.docker/nginx/init-letsencrypt.sh
 	@echo "${GREEN}✅ SSL-сертификаты инициализированы!${NC}"
 
 # Обновление SSL-сертификатов Let's Encrypt
@@ -254,9 +253,3 @@ ssl-check:
 	@echo "${BLUE}🔍 Проверка SSL-сертификатов...${NC}"
 	docker compose run --rm certbot certbot certificates
 	@echo "${GREEN}✅ Проверка SSL-сертификатов завершена!${NC}"
-
-# Создание пакета развертывания
-deploy-package:
-	@echo "${BLUE}📦 Создание пакета развертывания...${NC}"
-	./scripts/create-deploy-package.sh
-	@echo "${GREEN}✅ Пакет развертывания создан в директории deploy!${NC}"

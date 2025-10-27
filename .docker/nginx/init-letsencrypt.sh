@@ -2,7 +2,7 @@
 
 set -e
 
- domains=(signalscan.ru www.signalscan.ru)
+domains=(signalscan.ru www.signalscan.ru)
 rsa_key_size=4096
 data_path="./certbot"
 email="admin@signalscan.ru" # Adding a valid address is strongly recommended
@@ -28,6 +28,11 @@ path="/etc/letsencrypt/live"
 mkdir -p "$data_path/conf/live"
 for domain in "${domains[@]}"; do
   mkdir -p "$data_path/conf/live/$domain"
+  # Create dummy certificates
+  openssl req -x509 -nodes -newkey rsa:1024 -days 1 \
+    -keyout "$data_path/conf/live/$domain/privkey.pem" \
+    -out "$data_path/conf/live/$domain/fullchain.pem" \
+    -subj "/CN=localhost"
 done
 
 echo "### Starting nginx ..."
@@ -37,6 +42,15 @@ echo
 # Wait for nginx to start
 sleep 5
 
+# shellcheck disable=SC2128
+echo "### Deleting dummy certificate for $domains ..."
+for domain in "${domains[@]}"; do
+  rm -f "$data_path/conf/live/$domain/privkey.pem"
+  rm -f "$data_path/conf/live/$domain/fullchain.pem"
+done
+echo
+
+# shellcheck disable=SC2128
 echo "### Requesting Let's Encrypt certificate for $domains ..."
 #Join $domains to -d args
 domain_args=""

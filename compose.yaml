@@ -101,38 +101,40 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq:cached
 
   # Сервис для периодического парсинга RSS
-  news_ai_rss_parser:
-      container_name: news_ai_rss_parser
-      image: alpine/curl:latest
-      restart: unless-stopped
-      depends_on:
-        - news_ai_app
-      command: >
-        sh -c "while true; do
-          echo 'Running RSS parser...' &&
-          docker exec news_ai_app php bin/console app:parse-rss --async &&
-          sleep 60;
-        done"
-      volumes:
-        - /var/run/docker.sock:/var/run/docker.sock
-      environment:
-        - APP_ENV=dev
-
-  news_ai_consumer:
-    container_name: news_ai_consumer
-    image: alpine/curl:latest
-    restart: unless-stopped
-    depends_on:
-      - news_ai_app
-    command: >
-      sh -c "while true; do
-        echo 'Running consumer...' &&
-        docker exec news_ai_app php bin/console messenger:consume async --memory-limit=128M --time-limit=600;
-      done"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - APP_ENV=dev
+#  news_ai_rss_parser:
+#      container_name: news_ai_rss_parser
+#      image: localhost:5000/news-ai-news_ai_app:latest
+#      restart: unless-stopped
+#      depends_on:
+#        - news_ai_app
+#      command: >
+#        sh -c "while true; do
+#          echo 'Running RSS parser...' &&
+#          php bin/console app:parse-rss --async &&
+#          sleep 60;
+#        done"
+#      volumes:
+#        - ./:/var/www/app
+#      environment:
+#        - APP_ENV=dev
+#      working_dir: /var/www/app
+#
+#  news_ai_consumer:
+#    container_name: news_ai_consumer
+#    image: localhost:5000/news-ai-news_ai_app:latest
+#    restart: unless-stopped
+#    depends_on:
+#      - news_ai_app
+#    command: >
+#      sh -c "while true; do
+#        echo 'Running consumer...' &&
+#        php bin/console messenger:consume async --memory-limit=128M --time-limit=600;
+#      done"
+#    volumes:
+#      - ./:/var/www/app
+#    environment:
+#      - APP_ENV=dev
+#    working_dir: /var/www/app
 
 volumes:
   postgres_data:

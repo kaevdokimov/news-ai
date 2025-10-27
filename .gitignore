@@ -1,4 +1,4 @@
-# Symfony
+#Symfony
 /var/
 /vendor/
 .env
@@ -61,3 +61,7 @@ deploy_key.pub
 /.lingma/
 /.aiassistant/
 certbot/
+
+#Temporary certificate files
+*.pem
+*.key
