@@ -34,6 +34,7 @@ jobs:
                       ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:${{ github.sha }}
                   cache-from: type=registry,ref=${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:latest
                   cache-to: type=inline
+                  no-cache: true
 
             - name: Setup SSH
               run: |

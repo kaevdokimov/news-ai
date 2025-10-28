@@ -25,11 +25,6 @@ RUN apk add --no-cache git unzip curl \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
     && chmod +x /usr/local/bin/composer
 
-# Install production dependencies
-WORKDIR ${APP_DIR}
-RUN composer install --prefer-dist --no-dev --no-scripts --no-progress --optimize-autoloader --no-interaction \
-    && chown -R www-data:www-data ${APP_DIR}/vendor
-
 # Copy remaining application files
 COPY --chown=www-data:www-data assets/ ${APP_DIR}/assets/
 COPY --chown=www-data:www-data bin/ ${APP_DIR}/bin/
@@ -39,6 +34,12 @@ COPY --chown=www-data:www-data public/ ${APP_DIR}/public/
 COPY --chown=www-data:www-data src/ ${APP_DIR}/src/
 COPY --chown=www-data:www-data templates/ ${APP_DIR}/templates/
 COPY --chown=www-data:www-data translations/ ${APP_DIR}/translations/
+
+# Install production dependencies
+WORKDIR ${APP_DIR}
+RUN mkdir -p vendor && \
+    composer install --prefer-dist --no-dev --no-scripts --no-progress --optimize-autoloader --no-interaction && \
+    chown -R www-data:www-data ${APP_DIR}/vendor
 
 # Copy PHP configuration and command script
 COPY .docker/app/php/fpm/php.ini /usr/local/etc/php/php.ini
