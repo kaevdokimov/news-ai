@@ -24,6 +24,16 @@ jobs:
                   username: ${{ vars.DOCKER_USERNAME }}
                   password: ${{ secrets.DOCKER_PASSWORD }}
 
+            - name: Pull and deploy containers
+              run: |
+                ssh -o StrictHostKeyChecking=no $SSH "
+                  echo '✅ SSH connection successful' &&
+                  docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} &&
+                  cd $DEPLOY_PATH &&
+                  docker compose -f compose-production.yaml pull &&
+                  docker compose -f compose-production.yaml up -d --remove-orphans
+                "
+
             - name: Build and push Docker image
               uses: docker/build-push-action@v4
               with:
