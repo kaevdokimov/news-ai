@@ -8,88 +8,42 @@ ENV APP_DIR=${APP_DIR} \
     APP_ENV=prod \
     APP_DEBUG=0
 
-# Create app directory as root
 USER root
+
+# Create app directory
 RUN mkdir -p ${APP_DIR} && chown www-data:www-data ${APP_DIR}
 
-# Copy only necessary files
+# Copy only composer files for dependency install layer
+COPY --chown=www-data:www-data composer.json composer.lock symfony.lock ${APP_DIR}/
+
+# Install system dependencies and composer
+RUN apk add --no-cache git unzip curl bash supervisor dcron su-exec netcat-openbsd openssl \
+    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+WORKDIR ${APP_DIR}
+
+# Install dependencies (no dev)
+RUN composer install --prefer-dist --no-dev --no-scripts --no-progress --optimize-autoloader --no-interaction
+
+# Copy application files
 COPY --chown=www-data:www-data \
-    composer.json \
-    composer.lock \
-    symfony.lock \
-    ${APP_DIR}/
+    assets/ bin/ config/ migrations/ public/ src/ templates/ translations/ ${APP_DIR}/
 
-# Install Composer and system dependencies (Alpine Linux)
-USER root
-RUN apk add --no-cache git unzip curl \
-    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-    && chmod +x /usr/local/bin/composer
-
-# Copy remaining application files
-COPY --chown=www-data:www-data assets/ ${APP_DIR}/assets/
-COPY --chown=www-data:www-data bin/ ${APP_DIR}/bin/
-COPY --chown=www-data:www-data config/ ${APP_DIR}/config/
-COPY --chown=www-data:www-data migrations/ ${APP_DIR}/migrations/
-COPY --chown=www-data:www-data public/ ${APP_DIR}/public/
-COPY --chown=www-data:www-data src/ ${APP_DIR}/src/
-COPY --chown=www-data:www-data templates/ ${APP_DIR}/templates/
-COPY --chown=www-data:www-data translations/ ${APP_DIR}/translations/
-
-# Install production dependencies
-WORKDIR ${APP_DIR}
-RUN mkdir -p vendor && \
-    composer install --prefer-dist --no-dev --no-scripts --no-progress --optimize-autoloader --no-interaction && \
-    chown -R www-data:www-data ${APP_DIR}/vendor
-
-# Copy PHP configuration and command script
+# PHP configuration and scripts
 COPY .docker/app/php/fpm/php.ini /usr/local/etc/php/php.ini
-COPY --chown=www-data:www-data [".docker/app/cmd.sh", "/var/www/app/.docker/app/cmd.sh"]
-
-# Set working directory and permissions
-WORKDIR ${APP_DIR}
-RUN mkdir -p var/cache var/log var/cache/prod && \
-    chown -R www-data:www-data var && \
-    chmod -R 777 var && \
-    chmod +x ${APP_DIR}/.docker/app/cmd.sh && \
-    # Ensure empty .env exists to satisfy Symfony Runtime Dotenv boot
-    touch ${APP_DIR}/.env && chmod 0644 ${APP_DIR}/.env && chown www-data:www-data ${APP_DIR}/.env && \
-    # Set correct permissions for src directory
-    find ${APP_DIR}/src -type d -exec chmod 755 {} \; && \
-    find ${APP_DIR}/src -type f -exec chmod 644 {} \;
-
-# Copy and set up the entrypoint script first
+COPY --chown=www-data:www-data .docker/app/cmd.sh ${APP_DIR}/.docker/app/cmd.sh
 COPY --chown=www-data:www-data .docker/app/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-# Then install cron and set up the cron job
-USER root
-RUN apk add --no-cache dcron su-exec && \
-    mkdir -p /var/log/cron && \
-    echo "*/5 * * * * /usr/local/bin/php /var/www/app/bin/console app:parse-rss >> /var/log/cron/cron.log 2>&1" > /etc/crontabs/root && \
-    chmod 0644 /etc/crontabs/root && \
-    chown root:root /etc/crontabs/root && \
-    touch /var/log/cron/cron.log && \
-    chmod 666 /var/log/cron/cron.log
-
-# Install supervisord and netcat for readiness checks
-USER root
-RUN apk add --no-cache supervisor netcat-openbsd && \
-    mkdir -p /etc/supervisor/conf.d
-
-# Copy supervisord configuration
 COPY --chown=www-data:www-data .docker/app/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Prepare supervisord logging directory (writable by www-data if supervisord runs non-root)
-RUN mkdir -p /var/log/supervisord \
-    && touch /var/log/supervisord/supervisord.log \
-    && chown -R www-data:www-data /var/log/supervisord \
-    && chmod 0664 /var/log/supervisord/supervisord.log
+RUN chmod +x /entrypoint.sh ${APP_DIR}/.docker/app/cmd.sh && \
+    mkdir -p var/cache var/log var/cache/prod /var/log/supervisord /var/log/cron && \
+    touch /var/log/supervisord/supervisord.log /var/log/cron/cron.log && \
+    chown -R www-data:www-data var /var/log/supervisord /var/log/cron && \
+    chmod -R 777 var /var/log/supervisord /var/log/cron && \
+    echo "*/5 * * * * /usr/local/bin/php /var/www/app/bin/console app:parse-rss >> /var/log/cron/cron.log 2>&1" > /etc/crontabs/root
 
-# Set entrypoint to initialize services (cron) and drop privileges
 ENTRYPOINT ["/entrypoint.sh"]
 
-# Ensure we start as root; entrypoint will drop to www-data
 USER root
 
-# Run the application with supervisord (managed as www-data via entrypoint)
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

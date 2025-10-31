@@ -10,6 +10,7 @@ on:
 jobs:
     deploy:
         runs-on: ubuntu-latest
+
         steps:
             - uses: actions/checkout@v3
 
@@ -23,20 +24,19 @@ jobs:
                   username: ${{ vars.DOCKER_USERNAME }}
                   password: ${{ secrets.DOCKER_PASSWORD }}
 
-            - name: Build and push
+            - name: Build and push Docker image
               uses: docker/build-push-action@v4
               with:
                   context: .
-                  push: true
                   file: .docker/app/DockerfileProduction
+                  push: true
                   tags: |
                       ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:latest
                       ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:${{ github.sha }}
                   cache-from: type=registry,ref=${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:latest
                   cache-to: type=inline
-                  no-cache: true
 
-            - name: Setup SSH
+            - name: Setup SSH connection
               run: |
                   mkdir -p ~/.ssh
                   echo "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ecdsa
@@ -45,108 +45,41 @@ jobs:
 
             - name: Deploy to server
               env:
-                  COMPOSE_PROJECT_NAME: ${{ vars.COMPOSE_PROJECT_NAME }}
-                  APP_ENV: ${{ secrets.APP_ENV }}
-                  APP_SECRET: ${{ secrets.APP_SECRET }}
-                  POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-                  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-                  POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-                  POSTGRES_VERSION: ${{ vars.POSTGRES_VERSION }}
-                  RABBITMQ_DEFAULT_PASS: ${{ secrets.RABBITMQ_DEFAULT_PASS }}
-                  RABBITMQ_SERVER_VERSION: ${{ vars.RABBITMQ_SERVER_VERSION }}
-                  RABBITMQ_USER: ${{ secrets.RABBITMQ_USER }}
-                  RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
                   DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-                  DEFAULT_URI: ${{ secrets.DEFAULT_URI }}
-                  DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY }}
-                  DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME }}
                   DOCKER_IMAGE: ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:latest
+                  SSH: ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}
               run: |
-                  # Test connection
-                  ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "echo 'SSH connection successful'"
+                  $SSH "echo '✅ SSH connection successful' && mkdir -p $DEPLOY_PATH"
 
-                  # Create deployment directory
-                  ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "mkdir -p ${{ secrets.DEPLOY_PATH }}"
+                  # Copy necessary files
+                  scp -P ${{ secrets.SSH_PORT }} .docker/nginx/default-production.conf ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:$DEPLOY_PATH/.docker/nginx/
+                  scp -P ${{ secrets.SSH_PORT }} compose-production.yaml ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:$DEPLOY_PATH/compose.yaml
+                  scp -P ${{ secrets.SSH_PORT }} .env.prod ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:$DEPLOY_PATH/.env
+                  scp -r -P ${{ secrets.SSH_PORT }} config/packages/ ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:$DEPLOY_PATH/config/
+                  scp -r -P ${{ secrets.SSH_PORT }} public/ ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:$DEPLOY_PATH/public/
 
-                  # Copy only necessary files (avoiding git files that cause permission issues)
-                  ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "mkdir -p ${{ secrets.DEPLOY_PATH }}/.docker/nginx ${{ secrets.DEPLOY_PATH }}/config/packages ${{ secrets.DEPLOY_PATH }}/public"
-                  scp -P ${{ secrets.SSH_PORT }} .docker/nginx/default-production.conf ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/.docker/nginx/
-                  scp -P ${{ secrets.SSH_PORT }} compose-production.yaml ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/compose.yaml
-                  scp -P ${{ secrets.SSH_PORT }} .env.prod ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/.env
+                  # Deploy stack
+                  $SSH "cd $DEPLOY_PATH && docker login ${{ vars.DOCKER_REGISTRY }} -u ${{ vars.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }} && \
+                    docker compose pull && docker compose up -d --wait"
 
-                  # Copy config files
-                  scp -P ${{ secrets.SSH_PORT }} config/packages/*.yaml ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/config/packages/
+                  # Run DB migrations
+                  $SSH "cd $DEPLOY_PATH && docker compose run --rm news_ai_app php bin/console doctrine:migrations:migrate -n --allow-no-migration"
 
-                  # Copy public files
-                  scp -r -P ${{ secrets.SSH_PORT }} public/* ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/public/
+                  # Handle SSL certificates (if missing)
+                  $SSH "mkdir -p $DEPLOY_PATH/certbot/conf/live/signalscan.ru $DEPLOY_PATH/certbot/www && \
+                    if [ ! -f '$DEPLOY_PATH/certbot/conf/live/signalscan.ru/fullchain.pem' ]; then
+                      echo 'Generating new dummy certs...'
+                      openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+                        -keyout '$DEPLOY_PATH/certbot/conf/live/signalscan.ru/privkey.pem' \
+                        -out '$DEPLOY_PATH/certbot/conf/live/signalscan.ru/fullchain.pem' \
+                        -subj '/CN=localhost'
+                      docker compose up -d news_ai_nginx && sleep 5
+                      docker run --rm -v '$DEPLOY_PATH/certbot/conf:/etc/letsencrypt' -v '$DEPLOY_PATH/certbot/www:/var/www/certbot' \
+                        certbot/certbot certonly --webroot --webroot-path=/var/www/certbot --email admin@signalscan.ru --agree-tos --no-eff-email -d signalscan.ru -d www.signalscan.ru
+                    else
+                      echo 'Renewing existing certificates...'
+                      docker run --rm -v '$DEPLOY_PATH/certbot/conf:/etc/letsencrypt' -v '$DEPLOY_PATH/certbot/www:/var/www/certbot' certbot/certbot renew
+                    fi"
 
-                  # Create certbot directories
-                  ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "mkdir -p ${{ secrets.DEPLOY_PATH }}/certbot/conf ${{ secrets.DEPLOY_PATH }}/certbot/www"
-
-                  # Deploy application
-                  ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.DEPLOY_PATH }} && \
-                    cat > .env << EOF
-                  APP_ENV=${{ secrets.APP_ENV }}
-                  APP_SECRET=${{ secrets.APP_SECRET }}
-                  POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-                  POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-                  POSTGRES_DB=${{ secrets.POSTGRES_DB }}
-                  POSTGRES_VERSION=${{ vars.POSTGRES_VERSION }}
-                  RABBITMQ_DEFAULT_PASS=${{ secrets.RABBITMQ_DEFAULT_PASS }}
-                  RABBITMQ_SERVER_VERSION=${{ vars.RABBITMQ_SERVER_VERSION }}
-                  RABBITMQ_USER=${{ secrets.RABBITMQ_USER }}
-                  RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}
-                  COMPOSE_PROJECT_NAME=${{ vars.COMPOSE_PROJECT_NAME }}
-                  DOCKER_REGISTRY=${{ vars.DOCKER_REGISTRY }}
-                  DOCKER_USERNAME=${{ vars.DOCKER_USERNAME }}
-                  DOCKER_IMAGE=${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:latest
-                  DEFAULT_URI=${{ secrets.DEFAULT_URI }}
-                  EOF"
-
-                  # Pull the pre-built image
-                  echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ vars.DOCKER_USERNAME }} --password-stdin ${{ vars.DOCKER_REGISTRY }}
-                  docker pull $DOCKER_IMAGE
-
-                  # Update services
-                  docker compose pull
-                  docker compose up -d --wait
-
-                  # Apply database migrations if necessary
-                  docker compose run --rm news_ai_app php bin/console doctrine:migrations:migrate -n --allow-no-migration
-
-                  # Check if certificates exist, if not - obtain them
-                  # Ensure certificates directory has correct permissions
-                    chmod -R 755 ${{ secrets.DEPLOY_PATH }}/certbot/conf
-
-                  # Ensure docker volumes are refreshed
-                    docker compose down
-                    docker compose up -d news_ai_nginx
-                    sleep 5
-                  echo "Checking for existing certificates..."
-                  if [ ! -f "${{ secrets.DEPLOY_PATH }}/certbot/conf/live/signalscan.ru/fullchain.pem" ]; then
-                    echo "No existing certificates found. Obtaining new certificates..."
-                    # Create dummy certificates to start nginx
-                    mkdir -p ${{ secrets.DEPLOY_PATH }}/certbot/conf/live/signalscan.ru
-                    mkdir -p ${{ secrets.DEPLOY_PATH }}/certbot/conf/live/www.signalscan.ru
-                    openssl req -x509 -nodes -newkey rsa:1024 -days 1 -keyout "${{ secrets.DEPLOY_PATH }}/certbot/conf/live/signalscan.ru/privkey.pem" -out "${{ secrets.DEPLOY_PATH }}/certbot/conf/live/signalscan.ru/fullchain.pem" -subj "/CN=localhost"
-                    openssl req -x509 -nodes -newkey rsa:1024 -days 1 -keyout "${{ secrets.DEPLOY_PATH }}/certbot/conf/live/www.signalscan.ru/privkey.pem" -out "${{ secrets.DEPLOY_PATH }}/certbot/conf/live/www.signalscan.ru/fullchain.pem" -subj "/CN=localhost"
-
-                    # Start nginx with dummy certificates
-                    docker compose up -d news_ai_nginx
-                    sleep 5
-
-                    # Delete dummy certificates
-                    rm -f ${{ secrets.DEPLOY_PATH }}/certbot/conf/live/signalscan.ru/privkey.pem
-                    rm -f ${{ secrets.DEPLOY_PATH }}/certbot/conf/live/signalscan.ru/fullchain.pem
-                    rm -f ${{ secrets.DEPLOY_PATH }}/certbot/conf/live/www.signalscan.ru/privkey.pem
-                    rm -f ${{ secrets.DEPLOY_PATH }}/certbot/conf/live/www.signalscan.ru/fullchain.pem
-
-                    # Obtain real certificates
-                    docker run --rm -v "${{ secrets.DEPLOY_PATH }}/certbot/conf:/etc/letsencrypt" -v "${{ secrets.DEPLOY_PATH }}/certbot/www:/var/www/certbot" certbot/certbot certonly --webroot --webroot-path=/var/www/certbot --email admin@signalscan.ru --agree-tos --no-eff-email -d signalscan.ru -d www.signalscan.ru || echo "Failed to obtain certificates. Continuing without SSL for now."
-                  else
-                    echo "Certificates found. Renewing if necessary..."
-                    docker run --rm -v "${{ secrets.DEPLOY_PATH }}/certbot/conf:/etc/letsencrypt" -v "${{ secrets.DEPLOY_PATH }}/certbot/www:/var/www/certbot" certbot/certbot renew || echo "Failed to renew certificates. Continuing with existing ones."
-                  fi
-
-                  # Reload nginx to apply certificates
-                  docker compose exec news_ai_nginx nginx -s reload || echo "Failed to reload nginx. Please check nginx configuration."
+                  # Reload nginx
+                  $SSH "docker compose exec news_ai_nginx nginx -s reload || echo '⚠️ Failed to reload nginx'"
