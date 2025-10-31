@@ -115,6 +115,13 @@ jobs:
                   docker compose run --rm news_ai_app php bin/console doctrine:migrations:migrate -n --allow-no-migration
 
                   # Check if certificates exist, if not - obtain them
+                  # Ensure certificates directory has correct permissions
+                    chmod -R 755 ${{ secrets.DEPLOY_PATH }}/certbot/conf
+
+                  # Ensure docker volumes are refreshed
+                    docker compose down
+                    docker compose up -d news_ai_nginx
+                    sleep 5
                   echo "Checking for existing certificates..."
                   if [ ! -f "${{ secrets.DEPLOY_PATH }}/certbot/conf/live/signalscan.ru/fullchain.pem" ]; then
                     echo "No existing certificates found. Obtaining new certificates..."
