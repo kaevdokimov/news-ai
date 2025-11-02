@@ -5,6 +5,7 @@ on:
         branches: ["main"]
     workflow_dispatch:
 
+# Add these permissions at the top level
 permissions:
     contents: read
     packages: write
