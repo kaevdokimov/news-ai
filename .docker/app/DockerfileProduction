@@ -1,49 +1,74 @@
+# Метаданные
+LABEL maintainer="kaevdokimov"
+LABEL description="News AI Production Image"
+
 FROM ghcr.io/kaevdokimov/php:php84
 
-# Build arguments
+# Аргументы сборки
 ARG APP_DIR=/var/www/app
 
-# Environment variables
+# Переменные окружения
 ENV APP_DIR=${APP_DIR} \
     APP_ENV=prod \
-    APP_DEBUG=0
+    APP_DEBUG=0 \
+    COMPOSER_ALLOW_SUPERUSER=1 \
+    COMPOSER_MEMORY_LIMIT=-1
 
-USER root
-
-# Create app directory
-RUN mkdir -p ${APP_DIR} && chown www-data:www-data ${APP_DIR}
-
-# Copy only composer files for dependency install layer
-COPY --chown=www-data:www-data composer.json composer.lock symfony.lock ${APP_DIR}/
-
-# Install system dependencies and composer
-RUN apk add --no-cache git unzip curl bash supervisor dcron su-exec netcat-openbsd openssl \
+# Установка зависимостей и настройка
+RUN set -eux; \
+    apk add --no-cache --update --virtual .build-deps \
+        git \
+        unzip \
+        curl \
+        bash \
+        supervisor \
+        dcron \
+        su-exec \
+        netcat-openbsd \
+        openssl \
+    && apk add --no-cache tzdata \
+    && rm -rf /var/cache/apk/* \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Создание директории приложения
+RUN mkdir -p ${APP_DIR} && \
+    chown www-data:www-data ${APP_DIR}
 
 WORKDIR ${APP_DIR}
 
-# Install dependencies (no dev)
-RUN composer install --prefer-dist --no-dev --no-scripts --no-progress --optimize-autoloader --no-interaction
+# Копирование зависимостей
+COPY --chown=www-data:www-data composer.* symfony.lock ./
 
-# Copy application files
+# Установка зависимостей
+RUN composer install --prefer-dist --no-dev --no-scripts --no-progress --optimize-autoloader --no-interaction \
+    && composer clear-cache
+
+# Копирование файлов приложения
 COPY --chown=www-data:www-data \
-    assets/ bin/ config/ migrations/ public/ src/ templates/ translations/ ${APP_DIR}/
+    assets/ bin/ config/ migrations/ public/ src/ templates/ translations/ ./
 
-# PHP configuration and scripts
+# Копирование конфигураций
 COPY .docker/app/php/fpm/php.ini /usr/local/etc/php/php.ini
-COPY --chown=www-data:www-data .docker/app/cmd.sh ${APP_DIR}/.docker/app/cmd.sh
+COPY --chown=www-data:www-data .docker/app/cmd.sh .docker/app/cmd.sh
 COPY --chown=www-data:www-data .docker/app/entrypoint.sh /entrypoint.sh
 COPY --chown=www-data:www-data .docker/app/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-RUN chmod +x /entrypoint.sh ${APP_DIR}/.docker/app/cmd.sh && \
-    mkdir -p var/cache var/log var/cache/prod /var/log/supervisord /var/log/cron && \
-    touch /var/log/supervisord/supervisord.log /var/log/cron/cron.log && \
-    chown -R www-data:www-data var /var/log/supervisord /var/log/cron && \
-    chmod -R 777 var /var/log/supervisord /var/log/cron && \
+# Настройка прав и директорий
+RUN set -eux; \
+    chmod +x /entrypoint.sh .docker/app/cmd.sh; \
+    mkdir -p var/cache var/log /var/log/supervisord /var/log/cron; \
+    touch /var/log/supervisord/supervisord.log /var/log/cron/cron.log; \
+    chown -R www-data:www-data var /var/log/supervisord /var/log/cron; \
+    chmod -R 777 var /var/log/supervisord /var/log/cron; \
     echo "*/5 * * * * /usr/local/bin/php /var/www/app/bin/console app:parse-rss >> /var/log/cron/cron.log 2>&1" > /etc/crontabs/root
 
+# Здоровье контейнера
+HEALTHCHECK --interval=30s --timeout=3s --start-period=1m \
+    CMD curl -f http://localhost/health || exit 1
+
+# Точка входа и команда по умолчанию
 ENTRYPOINT ["/entrypoint.sh"]
-
-USER root
-
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+
+# Пользователь
+USER www-data

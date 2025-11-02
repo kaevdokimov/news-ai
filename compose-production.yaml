@@ -1,10 +1,11 @@
+version: '3.8'
+
 networks:
     backend:
         name: news_ai_backend
         driver: bridge
 
 services:
-    # --- NGINX (Frontend Gateway) ---
     news_ai_nginx:
         container_name: news_ai_nginx
         image: nginx:1.29-alpine3.22
@@ -16,17 +17,21 @@ services:
             - "443:443"
         volumes:
             - ./.docker/nginx/default-production.conf:/etc/nginx/templates/default.conf.template:ro
-            - ./:/var/www/app:ro
+            - ./public:/var/www/app/public:ro
             - ./certbot/conf:/etc/nginx/certs:ro
             - ./certbot/www:/var/www/certbot:ro
         environment:
             - NGINX_HOST=signalscan.ru
             - NGINX_PORT=80
-        depends_on:
-            news_ai_app:
-                condition: service_healthy
+        deploy:
+            resources:
+                limits:
+                    memory: 100M
+                    cpus: '0.5'
+                reservations:
+                    memory: 50M
+                    cpus: '0.25'
 
-    # --- PHP-FPM (Backend App) ---
     news_ai_app:
         container_name: news_ai_app
         image: ${DOCKER_IMAGE}
@@ -40,30 +45,37 @@ services:
             POSTGRES_USER: ${POSTGRES_USER}
             POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
             POSTGRES_DB: ${POSTGRES_DB}
-            POSTGRES_VERSION: ${POSTGRES_VERSION:-16}
-            DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@news_ai_pg:5432/${POSTGRES_DB}?serverVersion=${POSTGRES_VERSION:-16}&charset=utf8
+            POSTGRES_VERSION: ${POSTGRES_VERSION:-18}
+            DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@news_ai_pg:5432/${POSTGRES_DB}?serverVersion=${POSTGRES_VERSION:-18}&charset=utf8
             MESSENGER_TRANSPORT_DSN: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@news_ai_rabbitmq:5672/%2f/messages
             REDIS_URL: redis://news_ai_redis:6379
             CORS_ALLOW_ORIGIN: ^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$
             DEFAULT_URI: ${DEFAULT_URI:-https://signalscan.ru}
-        depends_on:
-            news_ai_pg:
-                condition: service_healthy
-            news_ai_rabbitmq:
-                condition: service_healthy
-            news_ai_redis:
-                condition: service_started
-        volumes:
-            - ./public:/var/www/app/public:ro
-            - ./var:/var/www/app/var:rw
-        working_dir: /var/www/app
+            # Оптимизация PHP для малопроизводительных серверов
+            PHP_OPCACHE_ENABLE: 1
+            PHP_OPCACHE_MEMORY_CONSUMPTION: 64
+            PHP_OPCACHE_MAX_ACCELERATED_FILES: 20000
+            PHP_OPCACHE_REVALIDATE_FREQ: 60
+            PHP_OPCACHE_ENABLE_CLI: 0
+            PHP_MEMORY_LIMIT: 128M
+            PHP_MAX_EXECUTION_TIME: 60
+            PHP_UPLOAD_MAX_FILESIZE: 10M
+            PHP_POST_MAX_SIZE: 10M
+        deploy:
+            resources:
+                limits:
+                    memory: 400M
+                    cpus: '1'
+                reservations:
+                    memory: 200M
+                    cpus: '0.5'
         healthcheck:
             test: ["CMD", "php", "-v"]
             interval: 30s
             timeout: 10s
             retries: 3
+            start_period: 30s
 
-    # --- PostgreSQL ---
     news_ai_pg:
         container_name: news_ai_pg
         image: postgres:${POSTGRES_VERSION:-18}-alpine3.22
@@ -76,8 +88,22 @@ services:
             POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
             POSTGRES_DB: ${POSTGRES_DB}
             POSTGRES_HOST_AUTH_METHOD: md5
-        ports:
-            - "5434:5432"
+            # Оптимизация PostgreSQL для малопроизводительных серверов
+            POSTGRES_SHARED_BUFFERS: 128MB
+            POSTGRES_EFFECTIVE_CACHE_SIZE: 256MB
+            POSTGRES_WORK_MEM: 4MB
+            POSTGRES_MAINTENANCE_WORK_MEM: 32MB
+            POSTGRES_MAX_CONNECTIONS: 20
+            POSTGRES_RANDOM_PAGE_COST: 1.1
+            POSTGRES_EFFECTIVE_IO_CONCURRENCY: 2
+        deploy:
+            resources:
+                limits:
+                    memory: 300M
+                    cpus: '1'
+                reservations:
+                    memory: 200M
+                    cpus: '0.5'
         healthcheck:
             test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
             interval: 10s
@@ -92,23 +118,29 @@ services:
             -c config_file=/etc/postgresql/postgresql.conf
             -c hba_file=/etc/postgresql/pg_hba.conf
 
-    # --- Redis ---
     news_ai_redis:
         container_name: news_ai_redis
         image: redis:8.2-alpine3.22
         restart: unless-stopped
         networks:
             - backend
-        volumes:
-            - redis_data:/data
-        command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+        command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru
         healthcheck:
             test: ["CMD", "redis-cli", "ping"]
             interval: 10s
             timeout: 5s
-            retries: 5
+            retries: 3
+        deploy:
+            resources:
+                limits:
+                    memory: 100M
+                    cpus: '0.5'
+                reservations:
+                    memory: 50M
+                    cpus: '0.25'
+        volumes:
+            - redis_data:/data
 
-    # --- RabbitMQ ---
     news_ai_rabbitmq:
         container_name: news_ai_rabbitmq
         image: rabbitmq:${RABBITMQ_SERVER_VERSION:-4.1.4}-management-alpine
@@ -116,31 +148,25 @@ services:
         networks:
             - backend
         environment:
-            RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-rabbitmq}
-            RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-rabbitmq}
-        volumes:
-            - rabbitmq_data:/var/lib/rabbitmq:rw
+            RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-user}
+            RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-password}
+            RABBITMQ_VM_MEMORY_HIGH_WATERMARK: 0.5
+            RABBITMQ_DISK_FREE_LIMIT: 50MB
+        deploy:
+            resources:
+                limits:
+                    memory: 200M
+                    cpus: '0.5'
+                reservations:
+                    memory: 100M
+                    cpus: '0.25'
         healthcheck:
-            test: ["CMD", "rabbitmq-diagnostics", "check_running"]
-            interval: 20s
+            test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+            interval: 30s
             timeout: 10s
-            retries: 5
-
-    # --- Certbot (Let's Encrypt renewal) ---
-    certbot:
-        container_name: news_ai_certbot
-        image: certbot/certbot:latest
-        restart: unless-stopped
-        networks:
-            - backend
-        depends_on:
-            news_ai_nginx:
-                condition: service_started
+            retries: 3
         volumes:
-            - ./certbot/conf:/etc/letsencrypt
-            - ./certbot/www:/var/www/certbot
-        entrypoint: >
-            /bin/sh -c "trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done;"
+            - rabbitmq_data:/var/lib/rabbitmq
 
 volumes:
     postgres_data:
