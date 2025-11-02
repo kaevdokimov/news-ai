@@ -24,12 +24,22 @@ jobs:
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v2
 
-            - name: Login to GitHub Container Registry
+            - name: Log in to GitHub Container Registry
               uses: docker/login-action@v2
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Extract metadata (tags, labels) for Docker
+              id: meta
+              uses: docker/metadata-action@v4
+              with:
+                  images: ${{ env.DOCKER_IMAGE }}
+                  tags: |
+                      type=ref,event=branch
+                      type=ref,event=tag
+                      type=sha,format=long
 
             - name: Build and push Docker image
               uses: docker/build-push-action@v4
@@ -37,27 +47,31 @@ jobs:
                   context: .
                   file: .docker/app/DockerfileProduction
                   push: true
-                  tags: ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }}
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
+                  build-args: |
+                      APP_ENV=prod
+                      APP_DEBUG=0
 
             - name: Install SSH key
               uses: webfactory/ssh-agent@v0.7.0
               with:
                   ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-            - name: Setup environment
+            - name: Disable strict host key checking
               run: |
                   mkdir -p ~/.ssh
-                  echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-                  chmod 600 ~/.ssh/known_hosts
+                  echo "StrictHostKeyChecking no" >> ~/.ssh/config
+                  chmod 600 ~/.ssh/config
 
             - name: Deploy to server
               env:
                   DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
                   SSH_USER: ${{ secrets.SSH_USERNAME }}
                   SSH_HOST: ${{ secrets.SSH_HOST }}
-                  SSH_PORT: ${{ secrets.SSH_PORT }}
+                  SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
                   DOCKER_IMAGE: ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }}
               run: |
                   # Create necessary directories
@@ -141,4 +155,4 @@ jobs:
             - name: Verify deployment
               run: |
                   curl -sSf https://signalscan.ru/health > /dev/null
-                  echo '✅ Deployment successful!'
+                  echo '✅ Деплой успешно завершен!'
