@@ -1,24 +1,15 @@
 name: Deploy to Production
+permissions:
+    contents: read
 
 on:
     push:
         branches: ["main"]
     workflow_dispatch:
 
-permissions:
-    contents: read
-    packages: write
-
-env:
-    REGISTRY: ghcr.io
-    IMAGE_NAME: ${{ github.repository }}
-    DOCKER_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-
 jobs:
     deploy:
-        name: Deploy to Production
         runs-on: ubuntu-latest
-        environment: production
 
         steps:
             - uses: actions/checkout@v3
@@ -26,19 +17,12 @@ jobs:
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v2
 
-            - name: Log in to GitHub Container Registry
+            - name: Login to Docker Registry
               uses: docker/login-action@v2
               with:
-                  registry: ${{ env.REGISTRY }}
-                  username: ${{ github.repository_owner }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
-
-            -   name: Extract metadata for Docker
-                id: meta
-                uses: docker/metadata-action@v4
-                with:
-                    images: ${{ env.DOCKER_IMAGE }}
-                    tags: latest=true
+                  registry: ${{ vars.DOCKER_REGISTRY }}
+                  username: ${{ vars.DOCKER_USERNAME }}
+                  password: ${{ secrets.DOCKER_PASSWORD }}
 
             - name: Build and push Docker image
               uses: docker/build-push-action@v4
@@ -46,112 +30,77 @@ jobs:
                   context: .
                   file: .docker/app/DockerfileProduction
                   push: true
-                  tags: ${{ steps.meta.outputs.tags }}
-                  labels: ${{ steps.meta.outputs.labels }}
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
-                  build-args: |
-                      APP_ENV=prod
-                      APP_DEBUG=0
+                  tags: |
+                      ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:latest
+                      ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:${{ github.sha }}
+                  cache-from: type=registry,ref=${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:latest
+                  cache-to: type=inline
 
-            - name: Install SSH key
-              uses: webfactory/ssh-agent@v0.7.0
-              with:
-                  ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-            - name: Disable strict host key checking
+            - name: Setup SSH connection
               run: |
                   mkdir -p ~/.ssh
-                  echo "StrictHostKeyChecking no" >> ~/.ssh/config
-                  chmod 600 ~/.ssh/config
+                  echo "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ecdsa
+                  chmod 600 ~/.ssh/id_ecdsa
+                  ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-            - name: Deploy to server
-              env:
-                  DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-                  SSH_USER: ${{ secrets.SSH_USERNAME }}
-                  SSH_HOST: ${{ secrets.SSH_HOST }}
-                  SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
-                  DOCKER_IMAGE: ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }}
-              run: |
-                  # Create necessary directories
-                  ssh -p $SSH_PORT $SSH_USER@$SSH_HOST "
-                    set -e
-                    mkdir -p $DEPLOY_PATH/{.docker/nginx,certbot/{conf,www},config,public}
-                  "
+            -   name: Deploy to server
+                env:
+                    DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+                    DOCKER_IMAGE: ${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:latest
+                    SSH_USER: ${{ secrets.SSH_USERNAME }}
+                    SSH_HOST: ${{ secrets.SSH_HOST }}
+                    SSH_PORT: ${{ secrets.SSH_PORT }}
+                run: |
+                    # Подготовка SSH ключа
+                    mkdir -p ~/.ssh
+                    echo "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ecdsa
+                    chmod 600 ~/.ssh/id_ecdsa
+                    ssh-keyscan -p $SSH_PORT $SSH_HOST >> ~/.ssh/known_hosts
 
-                  # Copy configuration files
-                  rsync -avz -e "ssh -p $SSH_PORT" \
-                    --exclude='.git' \
-                    --exclude='node_modules' \
-                    --exclude='var' \
-                    --exclude='vendor' \
-                    .docker/nginx/default-production.conf \
-                    $SSH_USER@$SSH_HOST:$DEPLOY_PATH/.docker/nginx/
+                    # Копирование файлов
+                    scp -P $SSH_PORT .docker/nginx/default-production.conf $SSH_USER@$SSH_HOST:$DEPLOY_PATH/.docker/nginx/
+                    scp -P $SSH_PORT compose-production.yaml $SSH_USER@$SSH_HOST:$DEPLOY_PATH/compose.yaml
+                    scp -P $SSH_PORT .env.prod $SSH_USER@$SSH_HOST:$DEPLOY_PATH/.env
+                    scp -r -P $SSH_PORT config/packages/ $SSH_USER@$SSH_HOST:$DEPLOY_PATH/config/
+                    scp -r -P $SSH_PORT public/ $SSH_USER@$SSH_HOST:$DEPLOY_PATH/public/
 
-                  rsync -avz -e "ssh -p $SSH_PORT" \
-                    compose-production.yaml \
-                    $SSH_USER@$SSH_HOST:$DEPLOY_PATH/
+                    # Выполнение команд на сервере в одной SSH сессии
+                    ssh -p $SSH_PORT $SSH_USER@$SSH_HOST "
+                      set -e
 
-                  rsync -avz -e "ssh -p $SSH_PORT" \
-                    --exclude='.env.local' \
-                    --exclude='.env.test' \
-                    .env.prod \
-                    $SSH_USER@$SSH_HOST:$DEPLOY_PATH/.env
+                      echo '✅ SSH connection successful'
+                      mkdir -p $DEPLOY_PATH/certbot/conf $DEPLOY_PATH/certbot/www
 
-                  rsync -avz -e "ssh -p $SSH_PORT" \
-                    --delete \
-                    config/packages/ \
-                    $SSH_USER@$SSH_HOST:$DEPLOY_PATH/config/packages/
+                      cd $DEPLOY_PATH
 
-                  rsync -avz -e "ssh -p $SSH_PORT" \
-                    --delete \
-                    public/ \
-                    $SSH_USER@$SSH_HOST:$DEPLOY_PATH/public/
+                      # Войти в GHCR
+                      echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u kaevdokimov --password-stdin
 
-                  # Execute deployment commands
-                  ssh -p $SSH_PORT $SSH_USER@$SSH_HOST "
-                    set -e
-                    cd $DEPLOY_PATH
+                      # Обновить образ и поднять контейнеры (без удаления volumes)
+                      docker compose -f compose-production.yaml pull
+                      docker compose -f compose-production.yaml up -d
 
-                    # Login to GitHub Container Registry
-                    echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+                      # Применить миграции
+                      docker compose run --rm news_ai_app php bin/console doctrine:migrations:migrate -n --allow-no-migration
 
-                    # Stop and remove existing containers
-                    docker compose -f compose-production.yaml down || true
+                      # SSL: проверка сертификатов и получение новых, если нужно
+                      if [ ! -f '$DEPLOY_PATH/certbot/conf/live/signalscan.ru/fullchain.pem' ]; then
+                        echo 'Generating dummy certificates...'
+                        mkdir -p $DEPLOY_PATH/certbot/conf/live/signalscan.ru
+                        openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+                          -keyout '$DEPLOY_PATH/certbot/conf/live/signalscan.ru/privkey.pem' \
+                          -out '$DEPLOY_PATH/certbot/conf/live/signalscan.ru/fullchain.pem' \
+                          -subj '/CN=localhost'
+                        docker compose up -d news_ai_nginx
+                        sleep 5
+                        docker run --rm -v '$DEPLOY_PATH/certbot/conf:/etc/letsencrypt' -v '$DEPLOY_PATH/certbot/www:/var/www/certbot' \
+                          certbot/certbot certonly --webroot --webroot-path=/var/www/certbot --email admin@signalscan.ru --agree-tos --no-eff-email -d signalscan.ru -d www.signalscan.ru
+                      else
+                        echo 'Renewing existing certificates...'
+                        docker run --rm -v '$DEPLOY_PATH/certbot/conf:/etc/letsencrypt' -v '$DEPLOY_PATH/certbot/www:/var/www/certbot' \
+                          certbot/certbot renew
+                      fi
 
-                    # Pull new images and start services
-                    docker compose -f compose-production.yaml pull
-                    docker compose -f compose-production.yaml up -d --remove-orphans
-
-                    # Run database migrations
-                    docker compose -f compose-production.yaml exec -T news_ai_app php bin/console doctrine:migrations:migrate -n --allow-no-migration
-
-                    # Clear and warmup cache
-                    docker compose -f compose-production.yaml exec -T news_ai_app php bin/console cache:clear --no-warmup
-                    docker compose -f compose-production.yaml exec -T news_ai_app php bin/console cache:warmup
-
-                    # Set proper permissions
-                    docker compose -f compose-production.yaml exec -T news_ai_app chown -R www-data:www-data /var/www/app/var
-                    docker compose -f compose-production.yaml exec -T news_ai_app chmod -R 0777 /var/www/app/var
-
-                    # Check if certificates exist, if not generate self-signed ones
-                    if [ ! -f '$DEPLOY_PATH/certbot/conf/live/signalscan.ru/fullchain.pem' ]; then
-                      echo 'Generating self-signed certificates...'
-                      mkdir -p $DEPLOY_PATH/certbot/conf/live/signalscan.ru
-                      openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
-                        -keyout '$DEPLOY_PATH/certbot/conf/live/signalscan.ru/privkey.pem' \
-                        -out '$DEPLOY_PATH/certbot/conf/live/signalscan.ru/fullchain.pem' \
-                        -subj '/CN=localhost'
-                    fi
-
-                    # Restart nginx to apply new certificates
-                    docker compose -f compose-production.yaml restart news_ai_nginx
-
-                    # Clean up old images
-                    docker image prune -af --filter 'until=24h'
-                  "
-
-            - name: Verify deployment
-              run: |
-                  curl -sSf https://signalscan.ru/health > /dev/null
-                  echo '✅ Деплой успешно завершен!'
+                      # Перезагрузить nginx
+                      docker compose exec news_ai_nginx nginx -s reload || echo '⚠️ Failed to reload nginx'
+                    "
