@@ -1,8 +1,8 @@
+FROM ghcr.io/kaevdokimov/php:php84
+
 # Метаданные
 LABEL maintainer="kaevdokimov"
 LABEL description="News AI Production Image"
-
-FROM ghcr.io/kaevdokimov/php:php84
 
 # Аргументы сборки
 ARG APP_DIR=/var/www/app
