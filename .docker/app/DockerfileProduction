@@ -1,3 +1,4 @@
+# Base image
 FROM ghcr.io/kaevdokimov/php:php84
 
 # Метаданные
@@ -15,8 +16,14 @@ ENV APP_DIR=${APP_DIR} \
     COMPOSER_MEMORY_LIMIT=-1
 
 # Установка зависимостей и настройка
+# Сначала обновляем и устанавливаем системные пакеты от root
+USER root
+
 RUN set -eux; \
-    apk add --no-cache --update --virtual .build-deps \
+    # Обновление индексов пакетов
+    apk update --no-cache; \
+    # Установка пакетов
+    apk add --no-cache \
         git \
         unzip \
         curl \
@@ -26,13 +33,16 @@ RUN set -eux; \
         su-exec \
         netcat-openbsd \
         openssl \
-    && apk add --no-cache tzdata \
-    && rm -rf /var/cache/apk/* \
-    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-
-# Создание директории приложения
-RUN mkdir -p ${APP_DIR} && \
-    chown www-data:www-data ${APP_DIR}
+        tzdata; \
+    # Очистка кэша
+    rm -rf /var/cache/apk/*; \
+    # Установка Composer
+    curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer --quiet; \
+    # Проверка установки
+    composer --version; \
+    # Создание директории приложения
+    mkdir -p ${APP_DIR} && \
+    chown -R www-data:www-data ${APP_DIR}
 
 WORKDIR ${APP_DIR}
 
@@ -40,8 +50,8 @@ WORKDIR ${APP_DIR}
 COPY --chown=www-data:www-data composer.* symfony.lock ./
 
 # Установка зависимостей
-RUN composer install --prefer-dist --no-dev --no-scripts --no-progress --optimize-autoloader --no-interaction \
-    && composer clear-cache
+RUN composer install --prefer-dist --no-dev --no-scripts --no-progress --optimize-autoloader --no-interaction && \
+    composer clear-cache
 
 # Копирование файлов приложения
 COPY --chown=www-data:www-data \
@@ -59,7 +69,7 @@ RUN set -eux; \
     mkdir -p var/cache var/log /var/log/supervisord /var/log/cron; \
     touch /var/log/supervisord/supervisord.log /var/log/cron/cron.log; \
     chown -R www-data:www-data var /var/log/supervisord /var/log/cron; \
-    chmod -R 777 var /var/log/supervisord /var/log/cron; \
+    chmod -R 0777 var /var/log/supervisord /var/log/cron; \
     echo "*/5 * * * * /usr/local/bin/php /var/www/app/bin/console app:parse-rss >> /var/log/cron/cron.log 2>&1" > /etc/crontabs/root
 
 # Здоровье контейнера
@@ -70,5 +80,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=1m \
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
 
-# Пользователь
+# Переключаемся на непривилегированного пользователя
 USER www-data

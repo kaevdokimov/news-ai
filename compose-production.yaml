@@ -1,5 +1,3 @@
-version: '3.8'
-
 networks:
     backend:
         name: news_ai_backend
@@ -34,7 +32,10 @@ services:
 
     news_ai_app:
         container_name: news_ai_app
-        image: ${DOCKER_IMAGE}
+        #image: ${DOCKER_IMAGE}
+        build:
+            context: .
+            dockerfile: .docker/app/DockerfileProduction
         restart: unless-stopped
         networks:
             - backend
