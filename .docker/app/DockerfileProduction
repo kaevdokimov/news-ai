@@ -44,8 +44,15 @@ COPY --chown=www-data:www-data composer.* symfony.lock ./
 # Установка зависимостей
 RUN composer install --prefer-dist --no-scripts --no-progress --optimize-autoloader --no-interaction
 
-# Копируем все файлы приложения
+# Копируем только необходимые файлы приложения
 COPY --chown=www-data:www-data . .
+
+# Проверяем наличие bin/console
+RUN if [ ! -f "bin/console" ]; then \
+        echo "Error: bin/console not found after copying files" >&2; \
+        ls -la bin/ 2>/dev/null || echo "bin/ directory does not exist" >&2; \
+        exit 1; \
+    fi
 
 # Удаляем ненужные файлы
 RUN rm -rf .docker/ .github/ .git/ docker-compose* .env* README.md
