@@ -44,6 +44,18 @@ jobs:
                   chmod 600 ~/.ssh/id_ecdsa
                   ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
+            -   name: Create .env file
+                run: |
+                    cat > .env << 'EOL'
+                    APP_ENV=${{ secrets.APP_ENV }}
+                    APP_SECRET=${{ secrets.APP_SECRET }}
+                    POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+                    RABBITMQ_DEFAULT_PASS=${{ secrets.RABBITMQ_DEFAULT_PASS }}
+                    RABBITMQ_USER=${{ secrets.RABBITMQ_USER }}
+                    RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}
+                    # Add other environment variables as needed
+                    EOL
+
             -   name: Deploy to server
                 env:
                     DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
@@ -68,7 +80,7 @@ jobs:
 
                     # Копирование только необходимых файлов
                     scp -P $SSH_PORT compose-production.yaml $SSH_USER@$SSH_HOST:$DEPLOY_PATH/
-                    scp -P $SSH_PORT .env.prod $SSH_USER@$SSH_HOST:$DEPLOY_PATH/.env
+                    scp -P $SSH_PORT .env $SSH_USER@$SSH_HOST:$DEPLOY_PATH/.env
 
                     # Выполнение команд на сервере в одной SSH сессии
                     ssh -p $SSH_PORT $SSH_USER@$SSH_HOST "

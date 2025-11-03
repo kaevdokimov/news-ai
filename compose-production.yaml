@@ -1,6 +1,8 @@
 networks:
     backend:
+        external: true
         name: news_ai_backend
+    frontend:
         driver: bridge
 
 services:
