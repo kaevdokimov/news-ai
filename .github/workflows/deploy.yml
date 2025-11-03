@@ -50,10 +50,11 @@ jobs:
                     APP_ENV=${{ secrets.APP_ENV }}
                     APP_SECRET=${{ secrets.APP_SECRET }}
                     POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+                    POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+                    POSTGRES_DB=${{ secrets.POSTGRES_DB }}
                     RABBITMQ_DEFAULT_PASS=${{ secrets.RABBITMQ_DEFAULT_PASS }}
                     RABBITMQ_USER=${{ secrets.RABBITMQ_USER }}
                     RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}
-                    # Add other environment variables as needed
                     EOL
 
             -   name: Deploy to server
@@ -97,11 +98,9 @@ jobs:
                       # Установить правильный тег образа
                       export DOCKER_IMAGE=ghcr.io/kaevdokimov/news-ai:latest
 
-                      # Останавливаем и удаляем существующие контейнеры
-                      docker-compose -f compose-production.yaml down || true
-
-                      # Запускаем сервисы в фоновом режиме
-                      docker-compose -f compose-production.yaml up -d --remove-orphans
+                      docker-compose -f compose-production.yaml down -v --remove-orphans || true
+                      docker ps -aq --no-trunc | xargs -r docker rm -f || true
+                      docker-compose -f compose-production.yaml up -d
 
                       # Очищаем неиспользуемые образы
                       docker image prune -af
