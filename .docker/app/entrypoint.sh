@@ -11,8 +11,7 @@ cd /var/www/app || { echo "Failed to change to /var/www/app"; exit 1; }
 
 # Verify vendor directory exists
 if [ ! -d "vendor" ]; then
-    echo "Error: Vendor directory not found. Make sure to run 'composer install' during build." >&2
-    exit 1
+    composer install --prefer-dist --no-scripts --no-progress --no-interaction
 fi
 
 # Copy .env file if it doesn't exist
@@ -46,8 +45,8 @@ php bin/console cache:clear --no-warmup
 php bin/console cache:warmup
 
 # Set proper permissions
-chown -R www-data:www-data /var/www/app/var
-chmod -R 0777 /var/www/app/var
+chown -R www-data:www-data var public
+chmod -R 0777 var
 
 # Start supervisord
 exec "$@"
