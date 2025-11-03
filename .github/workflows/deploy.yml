@@ -107,5 +107,5 @@ jobs:
                       fi
 
                       # Перезагрузить nginx
-                      docker compose exec news_ai_nginx nginx -s reload || echo '⚠️ Failed to reload nginx'
+                      docker compose -f compose-production.yaml exec news_ai_nginx nginx -s reload || echo '⚠️ Failed to reload nginx'
                     "
