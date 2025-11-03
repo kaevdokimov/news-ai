@@ -53,9 +53,11 @@ COPY --chown=www-data:www-data composer.* symfony.lock ./
 RUN composer install --prefer-dist --no-dev --no-scripts --no-progress --optimize-autoloader --no-interaction && \
     composer clear-cache
 
-# Копирование файлов приложения
-COPY --chown=www-data:www-data \
-    assets/ bin/ config/ migrations/ public/ src/ templates/ translations/ ./
+# Копирование всех файлов приложения
+COPY --chown=www-data:www-data . .
+
+# Удаление ненужных файлов
+RUN rm -rf .docker/ .github/ .git/ docker-compose* .env* README.md
 
 # Копирование конфигураций
 COPY .docker/app/php/fpm/php.ini /usr/local/etc/php/php.ini

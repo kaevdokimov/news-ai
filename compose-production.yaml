@@ -36,6 +36,10 @@ services:
         restart: unless-stopped
         networks:
             - backend
+        working_dir: /var/www/app
+        volumes:
+            - app_uploads:/var/www/app/public/uploads
+            - app_var:/var/www/app/var
         environment:
             APP_ENV: prod
             APP_DEBUG: 0
@@ -172,4 +176,8 @@ volumes:
     redis_data:
         driver: local
     rabbitmq_data:
+        driver: local
+    app_uploads:
+        driver: local
+    app_var:
         driver: local
