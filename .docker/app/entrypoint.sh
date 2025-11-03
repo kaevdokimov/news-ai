@@ -17,7 +17,10 @@ fi
 # Check if bin/console exists
 if [ ! -f "bin/console" ]; then
     echo "Error: bin/console not found in $(pwd)" >&2
-    ls -la bin/ 2>/dev/null || echo "bin/ directory does not exist"
+    echo "Available files in bin/:" >&2
+    ls -la bin/ 2>/dev/null || echo "bin/ directory does not exist" >&2
+    echo "Current directory contents:" >&2
+    ls -la >&2
     exit 1
 fi
 

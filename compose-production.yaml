@@ -93,14 +93,6 @@ services:
             POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
             POSTGRES_DB: ${POSTGRES_DB}
             POSTGRES_HOST_AUTH_METHOD: md5
-            # Оптимизация PostgreSQL для малопроизводительных серверов
-            POSTGRES_SHARED_BUFFERS: 128MB
-            POSTGRES_EFFECTIVE_CACHE_SIZE: 256MB
-            POSTGRES_WORK_MEM: 4MB
-            POSTGRES_MAINTENANCE_WORK_MEM: 32MB
-            POSTGRES_MAX_CONNECTIONS: 20
-            POSTGRES_RANDOM_PAGE_COST: 1.1
-            POSTGRES_EFFECTIVE_IO_CONCURRENCY: 2
         deploy:
             resources:
                 limits:

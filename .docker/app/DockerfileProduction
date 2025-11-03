@@ -84,6 +84,7 @@ RUN set -eux; \
     # Очистка кеша
     && php bin/console cache:warmup \
     && chown -R www-data:www-data var/cache var/log; \
+    && chmod +x ./bin/console \
     # Настройка cron
     echo "*/5 * * * * /usr/local/bin/php /var/www/app/bin/console app:parse-rss >> /var/log/cron/cron.log 2>&1" > /etc/crontabs/root
 
