@@ -79,14 +79,19 @@ jobs:
 
                       cd $DEPLOY_PATH
 
-                      # Войти в GHCR
-                      echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u ${{ vars.DOCKER_USERNAME }} --password-stdin
-
-                      # Использовать предварительно собранный образ
-                      export DOCKER_IMAGE=${{ vars.DOCKER_REGISTRY }}/${{ vars.DOCKER_USERNAME }}/news-ai:latest
+                      # Войти в GHCR с использованием GITHUB_TOKEN
+                      echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+                      
+                      # Установить правильный тег образа
+                      export DOCKER_IMAGE=ghcr.io/${{ github.repository_owner }}/news-ai:latest
                       
                       # Обновить образ и поднять контейнеры
-                      docker compose -f compose-production.yaml pull
+                      docker compose -f compose-production.yaml pull || \
+                        (echo "Pull failed, trying with GITHUB_TOKEN..." && \
+                         echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin && \
+                         docker compose -f compose-production.yaml pull)
+                      
+                      # Запуск контейнеров
                       docker compose -f compose-production.yaml up -d
 
                       # Применить миграции
