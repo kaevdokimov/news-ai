@@ -97,8 +97,14 @@ jobs:
                       # Установить правильный тег образа
                       export DOCKER_IMAGE=ghcr.io/kaevdokimov/news-ai:latest
 
-                      # Запуск контейнеров с принудительной пересборкой
-                      docker compose -f compose-production.yaml up -d --force-recreate
+                      # Останавливаем и удаляем существующие контейнеры
+                      docker-compose -f compose-production.yaml down || true
+
+                      # Запускаем сервисы в фоновом режиме
+                      docker-compose -f compose-production.yaml up -d --remove-orphans
+
+                      # Очищаем неиспользуемые образы
+                      docker image prune -af
 
                       # SSL: проверка сертификатов и получение новых, если нужно
                       if [ ! -f '$DEPLOY_PATH/certbot/conf/live/signalscan.ru/fullchain.pem' ]; then
