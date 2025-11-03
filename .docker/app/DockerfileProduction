@@ -1,4 +1,3 @@
-# Base image
 FROM ghcr.io/kaevdokimov/php:php84
 
 # Метаданные
@@ -16,13 +15,10 @@ ENV APP_DIR=${APP_DIR} \
     COMPOSER_MEMORY_LIMIT=-1
 
 # Установка зависимостей и настройка
-# Сначала обновляем и устанавливаем системные пакеты от root
 USER root
 
 RUN set -eux; \
-    # Обновление индексов пакетов
     apk update --no-cache; \
-    # Установка пакетов
     apk add --no-cache \
         git \
         unzip \
@@ -34,29 +30,24 @@ RUN set -eux; \
         netcat-openbsd \
         openssl \
         tzdata; \
-    # Очистка кэша
     rm -rf /var/cache/apk/*; \
-    # Установка Composer
     curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer --quiet; \
-    # Проверка установки
     composer --version; \
-    # Создание директории приложения
     mkdir -p ${APP_DIR} && \
     chown -R www-data:www-data ${APP_DIR}
 
 WORKDIR ${APP_DIR}
 
-# Копирование зависимостей
+# Копируем только composer файлы сначала для кэширования
 COPY --chown=www-data:www-data composer.* symfony.lock ./
 
 # Установка зависимостей
-RUN composer install --prefer-dist --no-dev --no-scripts --no-progress --optimize-autoloader --no-interaction && \
-    composer clear-cache
+RUN composer install --prefer-dist --no-scripts --no-progress --optimize-autoloader --no-interaction
 
-# Копирование всех файлов приложения
+# Копируем все файлы приложения
 COPY --chown=www-data:www-data . .
 
-# Удаление ненужных файлов
+# Удаляем ненужные файлы
 RUN rm -rf .docker/ .github/ .git/ docker-compose* .env* README.md
 
 # Копирование конфигураций
@@ -72,6 +63,13 @@ RUN set -eux; \
     touch /var/log/supervisord/supervisord.log /var/log/cron/cron.log; \
     chown -R www-data:www-data var /var/log/supervisord /var/log/cron; \
     chmod -R 0777 var /var/log/supervisord /var/log/cron; \
+    # Запускаем скрипты после установки зависимостей
+    composer run-script post-install-cmd; \
+    # Создаем директорию для загрузок
+    mkdir -p public/uploads && \
+    chown -R www-data:www-data public/uploads && \
+    chmod -R 0777 public/uploads; \
+    # Настройка cron
     echo "*/5 * * * * /usr/local/bin/php /var/www/app/bin/console app:parse-rss >> /var/log/cron/cron.log 2>&1" > /etc/crontabs/root
 
 # Здоровье контейнера
