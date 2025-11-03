@@ -77,15 +77,11 @@ RUN set -eux; \
     && rm -rf /tmp/* /var/tmp/* /usr/local/share/.cache/* /root/.composer/*
 
 # Настройка прав и директорий
-RUN set -eux; \
-    mkdir -p public/uploads \
-    && chown -R www-data:www-data public/uploads \
-    && chmod -R 0777 public/uploads \
-    # Очистка кеша
-    && php bin/console cache:warmup \
-    && chown -R www-data:www-data var/cache var/log; \
-    && chmod +x ./bin/console \
-    # Настройка cron
+RUN mkdir -p public/uploads &&  \
+    chown -R www-data:www-data public/uploads && \
+    chmod -R 0777 public/uploads && \
+    chown -R www-data:www-data var/cache var/log && \
+    chmod +x ./bin/console && \
     echo "*/5 * * * * /usr/local/bin/php /var/www/app/bin/console app:parse-rss >> /var/log/cron/cron.log 2>&1" > /etc/crontabs/root
 
 # Здоровье контейнера
