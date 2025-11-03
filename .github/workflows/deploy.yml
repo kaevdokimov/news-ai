@@ -65,7 +65,7 @@ jobs:
                       mkdir -p $DEPLOY_PATH/certbot/conf
                       mkdir -p $DEPLOY_PATH/certbot/www
                     "
-                    
+
                     # Копирование только необходимых файлов
                     scp -P $SSH_PORT compose-production.yaml $SSH_USER@$SSH_HOST:$DEPLOY_PATH/
                     scp -P $SSH_PORT .env.prod $SSH_USER@$SSH_HOST:$DEPLOY_PATH/.env
@@ -81,17 +81,14 @@ jobs:
 
                       # Войти в GHCR с использованием GITHUB_TOKEN
                       echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-                      
+
                       # Установить правильный тег образа
                       export DOCKER_IMAGE=ghcr.io/kaevdokimov/news-ai:latest
-                      
+
                       # Обновить образ
-      
+
                       # Запуск контейнеров с принудительной пересборкой
                       docker compose -f compose-production.yaml up -d --force-recreate
-
-                      # Применить миграции
-                      docker compose run --rm news_ai_app php bin/console doctrine:migrations:migrate -n --allow-no-migration
 
                       # SSL: проверка сертификатов и получение новых, если нужно
                       if [ ! -f '$DEPLOY_PATH/certbot/conf/live/signalscan.ru/fullchain.pem' ]; then
