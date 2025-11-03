@@ -62,7 +62,7 @@ RUN chmod +x /entrypoint.sh
 # Установка зависимостей
 RUN set -eux; \
     # Создаем необходимые директории
-    mkdir -p /var/log/supervisord /var/log/cron /tmp/composer-cache/files \
+    mkdir -p /var/log/supervisord /var/log/cron /tmp/composer-cache/files var \
     # Установка зависимостей (без скриптов, они выполнятся в entrypoint)
     && composer install --prefer-dist --no-dev --no-scripts --no-progress --optimize-autoloader --no-interaction \
     # Очистка кеша
