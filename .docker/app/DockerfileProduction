@@ -63,6 +63,7 @@ COPY --chown=www-data:www-data .docker/app/cmd.sh .docker/app/cmd.sh
 COPY --chown=www-data:www-data .docker/app/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY --chown=www-data:www-data .docker/app/entrypoint.sh /entrypoint.sh
 
+
 # Делаем entrypoint исполняемым
 RUN chmod +x /entrypoint.sh
 
