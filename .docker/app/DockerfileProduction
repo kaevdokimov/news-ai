@@ -53,22 +53,37 @@ RUN rm -rf .docker/ .github/ .git/ docker-compose* .env* README.md
 # Копирование конфигураций
 COPY .docker/app/php/fpm/php.ini /usr/local/etc/php/php.ini
 COPY --chown=www-data:www-data .docker/app/cmd.sh .docker/app/cmd.sh
-COPY --chown=www-data:www-data .docker/app/entrypoint.sh /entrypoint.sh
 COPY --chown=www-data:www-data .docker/app/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY --chown=www-data:www-data .docker/app/entrypoint.sh /entrypoint.sh
+
+# Делаем entrypoint исполняемым
+RUN chmod +x /entrypoint.sh
+
+# Установка зависимостей
+RUN set -eux; \
+    # Создаем необходимые директории
+    mkdir -p /var/log/supervisord /var/log/cron /tmp/composer-cache/files \
+    # Установка зависимостей (без скриптов, они выполнятся в entrypoint)
+    && composer install --prefer-dist --no-dev --no-scripts --no-progress --optimize-autoloader --no-interaction \
+    # Очистка кеша
+    && composer clear-cache \
+    # Установка прав
+    && chown -R www-data:www-data var \
+    && chmod -R 0777 var \
+    # Установка прав для логов
+    && chown -R www-data:www-data /var/log/supervisord /var/log/cron \
+    && chmod -R 0777 /var/log/supervisord /var/log/cron \
+    # Очистка временных файлов
+    && rm -rf /tmp/* /var/tmp/* /usr/local/share/.cache/* /root/.composer/*
 
 # Настройка прав и директорий
 RUN set -eux; \
-    chmod +x /entrypoint.sh .docker/app/cmd.sh; \
-    mkdir -p var/cache var/log /var/log/supervisord /var/log/cron; \
-    touch /var/log/supervisord/supervisord.log /var/log/cron/cron.log; \
-    chown -R www-data:www-data var /var/log/supervisord /var/log/cron; \
-    chmod -R 0777 var /var/log/supervisord /var/log/cron; \
-    # Запускаем скрипты после установки зависимостей
-    composer run-script post-install-cmd; \
-    # Создаем директорию для загрузок
-    mkdir -p public/uploads && \
-    chown -R www-data:www-data public/uploads && \
-    chmod -R 0777 public/uploads; \
+    mkdir -p public/uploads \
+    && chown -R www-data:www-data public/uploads \
+    && chmod -R 0777 public/uploads \
+    # Очистка кеша
+    && php bin/console cache:warmup \
+    && chown -R www-data:www-data var/cache var/log; \
     # Настройка cron
     echo "*/5 * * * * /usr/local/bin/php /var/www/app/bin/console app:parse-rss >> /var/log/cron/cron.log 2>&1" > /etc/crontabs/root
 

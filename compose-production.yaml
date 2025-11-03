@@ -33,6 +33,9 @@ services:
     news_ai_app:
         container_name: news_ai_app
         image: ${DOCKER_IMAGE:-ghcr.io/kaevdokimov/news-ai:latest}
+#        build:
+#            context: .
+#            dockerfile: .docker/app/DockerfileProduction
         restart: unless-stopped
         networks:
             - backend
