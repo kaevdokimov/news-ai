@@ -85,8 +85,6 @@ jobs:
                       # Установить правильный тег образа
                       export DOCKER_IMAGE=ghcr.io/kaevdokimov/news-ai:latest
 
-                      # Обновить образ
-
                       # Запуск контейнеров с принудительной пересборкой
                       docker compose -f compose-production.yaml up -d --force-recreate
 
@@ -98,7 +96,7 @@ jobs:
                           -keyout '$DEPLOY_PATH/certbot/conf/live/signalscan.ru/privkey.pem' \
                           -out '$DEPLOY_PATH/certbot/conf/live/signalscan.ru/fullchain.pem' \
                           -subj '/CN=localhost'
-                        docker compose up -d news_ai_nginx
+                        docker compose -f compose-production.yaml up -d news_ai_nginx
                         sleep 5
                         docker run --rm -v '$DEPLOY_PATH/certbot/conf:/etc/letsencrypt' -v '$DEPLOY_PATH/certbot/www:/var/www/certbot' \
                           certbot/certbot certonly --webroot --webroot-path=/var/www/certbot --email admin@signalscan.ru --agree-tos --no-eff-email -d signalscan.ru -d www.signalscan.ru
