@@ -86,7 +86,7 @@ services:
 
     news_ai_pg:
         container_name: news_ai_pg
-        image: postgres:${POSTGRES_VERSION:-18}-alpine3.22
+        image: postgres:${POSTGRES_VERSION:-18}-alpine3.23
         restart: unless-stopped
         networks:
             - backend
@@ -123,7 +123,7 @@ services:
 
     news_ai_redis:
         container_name: news_ai_redis
-        image: redis:8.2-alpine3.22
+        image: redis:8.2-alpine3.23
         restart: unless-stopped
         networks:
             - backend

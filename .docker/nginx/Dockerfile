@@ -1,4 +1,4 @@
-FROM nginx:1.29-alpine3.22
+FROM nginx:1.29-alpine3.23
 
 # Копируем конфигурацию Nginx
 COPY ./.docker/nginx/app.conf /etc/nginx/conf.d/default.conf
