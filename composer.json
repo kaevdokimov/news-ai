@@ -27,7 +27,7 @@
         "symfony/css-selector": "8.0.*",
         "symfony/doctrine-messenger": "7.3.*",
         "symfony/dom-crawler": "7.3.*",
-        "symfony/dotenv": "7.3.*",
+        "symfony/dotenv": "8.0.*",
         "symfony/expression-language": "7.3.*",
         "symfony/flex": "^2.9.0",
         "symfony/form": "7.3.*",
