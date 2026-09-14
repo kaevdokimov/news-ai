@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "97a763f7093820bd8461607ee4f4c54f",
+    "content-hash": "f4c979e2acb652f1f282d13d82d7c7cc",
     "packages": [
         {
             "name": "composer/semver",
@@ -10184,11 +10184,11 @@
         },
         {
             "name": "phpstan/phpstan",
-            "version": "2.1.40",
+            "version": "2.2.14",
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/9b2c7aeb83a75d8680ea5e7c9b7fca88052b766b",
-                "reference": "9b2c7aeb83a75d8680ea5e7c9b7fca88052b766b",
+                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/9c672e7a8e791dfc3d30e55f683e73fc0b63a3ac",
+                "reference": "9c672e7a8e791dfc3d30e55f683e73fc0b63a3ac",
                 "shasum": ""
             },
             "require": {
@@ -10210,6 +10210,17 @@
             "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Ondřej Mirtes"
+                },
+                {
+                    "name": "Markus Staab"
+                },
+                {
+                    "name": "Vincent Langlet"
+                }
             ],
             "description": "PHPStan - PHP Static Analysis Tool",
             "keywords": [
@@ -10233,25 +10244,25 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-02-23T15:04:35+00:00"
+            "time": "2026-09-12T21:39:33+00:00"
         },
         {
             "name": "phpstan/phpstan-doctrine",
-            "version": "2.0.12",
+            "version": "2.0.28",
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpstan/phpstan-doctrine.git",
-                "reference": "d20ee0373d22735271f1eb4d631856b5f847d399"
+                "reference": "b4623954d5ffee6311e4ddbaef65c074ae0f781a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpstan/phpstan-doctrine/zipball/d20ee0373d22735271f1eb4d631856b5f847d399",
-                "reference": "d20ee0373d22735271f1eb4d631856b5f847d399",
+                "url": "https://api.github.com/repos/phpstan/phpstan-doctrine/zipball/b4623954d5ffee6311e4ddbaef65c074ae0f781a",
+                "reference": "b4623954d5ffee6311e4ddbaef65c074ae0f781a",
                 "shasum": ""
             },
             "require": {
                 "php": "^7.4 || ^8.0",
-                "phpstan/phpstan": "^2.1.13"
+                "phpstan/phpstan": "^2.2.2"
             },
             "conflict": {
                 "doctrine/collections": "<1.0",
@@ -10271,7 +10282,7 @@
                 "doctrine/lexer": "^2.0 || ^3.0",
                 "doctrine/mongodb-odm": "^2.4.3",
                 "doctrine/orm": "^2.16.0",
-                "doctrine/persistence": "^2.2.1 || ^3.2",
+                "doctrine/persistence": "^2.2.1 || ^3.4.3",
                 "gedmo/doctrine-extensions": "^3.8",
                 "nesbot/carbon": "^2.49",
                 "php-parallel-lint/php-parallel-lint": "^1.2",
@@ -10280,6 +10291,7 @@
                 "phpstan/phpstan-strict-rules": "^2.0",
                 "phpunit/phpunit": "^9.6.20",
                 "ramsey/uuid": "^4.2",
+                "shipmonk/name-collision-detector": "^2.1",
                 "symfony/cache": "^5.4",
                 "symfony/uid": "^5.4 || ^6.4 || ^7.3"
             },
@@ -10302,11 +10314,14 @@
                 "MIT"
             ],
             "description": "Doctrine extensions for PHPStan",
+            "keywords": [
+                "static analysis"
+            ],
             "support": {
                 "issues": "https://github.com/phpstan/phpstan-doctrine/issues",
-                "source": "https://github.com/phpstan/phpstan-doctrine/tree/2.0.12"
+                "source": "https://github.com/phpstan/phpstan-doctrine/tree/2.0.28"
             },
-            "time": "2025-12-01T11:34:02+00:00"
+            "time": "2026-07-13T08:43:43+00:00"
         },
         {
             "name": "phpstan/phpstan-symfony",
