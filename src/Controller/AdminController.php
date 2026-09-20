@@ -14,14 +14,14 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_ADMIN')]
 class AdminController extends AbstractController
 {
+    public function __construct(private readonly NewsSourceRepository $newsSourceRepository, private readonly NewsItemRepository $newsItemRepository) {}
+
     #[Route('/admin', name: 'admin_dashboard')]
-    public function dashboard(
-        NewsSourceRepository $newsSourceRepository,
-        NewsItemRepository $newsItemRepository,
-    ): Response {
-        $sources = $newsSourceRepository->findAll();
-        $newsCount = $newsItemRepository->count([]);
-        $recentNews = $newsItemRepository->findLatestNews(10);
+    public function dashboard(): Response
+    {
+        $sources = $this->newsSourceRepository->findAll();
+        $newsCount = $this->newsItemRepository->count([]);
+        $recentNews = $this->newsItemRepository->findLatestNews(10);
 
         return $this->render('admin/dashboard.html.twig', [
             'sources' => $sources,
@@ -31,9 +31,9 @@ class AdminController extends AbstractController
     }
 
     #[Route('/admin/sources', name: 'admin_sources')]
-    public function sources(NewsSourceRepository $newsSourceRepository): Response
+    public function sources(): Response
     {
-        $sources = $newsSourceRepository->findAll();
+        $sources = $this->newsSourceRepository->findAll();
 
         return $this->render('admin/sources.html.twig', [
             'sources' => $sources,
@@ -41,9 +41,9 @@ class AdminController extends AbstractController
     }
 
     #[Route('/admin/news', name: 'admin_news')]
-    public function news(NewsItemRepository $newsItemRepository): Response
+    public function news(): Response
     {
-        $news = $newsItemRepository->findLatestNews(50);
+        $news = $this->newsItemRepository->findLatestNews(50);
 
         return $this->render('admin/news.html.twig', [
             'news' => $news,
