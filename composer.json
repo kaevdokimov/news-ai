@@ -37,7 +37,7 @@
         "symfony/mailer": "7.4.*",
         "symfony/messenger": "8.0.*",
         "symfony/mime": "7.4.*",
-        "symfony/monolog-bundle": "^3.11.2",
+        "symfony/monolog-bundle": "^4.1.0",
         "symfony/notifier": "8.0.*",
         "symfony/process": "7.4.*",
         "symfony/property-access": "7.4.*",
