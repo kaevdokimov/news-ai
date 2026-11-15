@@ -21,7 +21,7 @@
         "sonata-project/doctrine-orm-admin-bundle": "^4.21",
         "sonata-project/twig-extensions": "^2.6",
         "symfony/amqp-messenger": "8.0.*",
-        "symfony/asset": "7.4.*",
+        "symfony/asset": "8.1.*",
         "symfony/asset-mapper": "7.4.*",
         "symfony/console": "7.4.*",
         "symfony/css-selector": "8.0.*",
