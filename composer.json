@@ -40,7 +40,7 @@
         "symfony/monolog-bundle": "^4.1.0",
         "symfony/notifier": "8.0.*",
         "symfony/process": "7.4.*",
-        "symfony/property-access": "7.4.*",
+        "symfony/property-access": "8.1.*",
         "symfony/property-info": "7.4.*",
         "symfony/runtime": "8.0.*",
         "symfony/security-bundle": "7.4.*",
