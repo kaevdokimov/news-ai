@@ -122,7 +122,7 @@
         "phpunit/phpunit": "^12.5.35",
         "rector/rector": "^2.6.7",
         "roave/security-advisories": "dev-latest",
-        "symfony/browser-kit": "7.3.*",
+        "symfony/browser-kit": "8.1.*",
         "symfony/debug-bundle": "8.1.*",
         "symfony/maker-bundle": "^1.68",
         "symfony/stopwatch": "7.3.*",
